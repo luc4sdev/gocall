@@ -5,6 +5,8 @@ import { RemoteAudioTrack, RoomEvent, Track, type RemoteParticipant, type Remote
 import { useRoomContext } from '@livekit/components-react';
 
 const DEFAULT_VOLUME = 0.5;
+const VOLUMES_STORAGE_KEY = 'gocall:participantVolumes';
+const MUTED_STORAGE_KEY = 'gocall:participantMuted';
 
 export function getScreenShareVolumeKey(identity: string) {
     return `${identity}::screen`;
@@ -12,6 +14,16 @@ export function getScreenShareVolumeKey(identity: string) {
 
 function keyForPublication(identity: string, pub: RemoteTrackPublication) {
     return pub.source === Track.Source.ScreenShareAudio ? getScreenShareVolumeKey(identity) : identity;
+}
+
+function loadStoredRecord<T>(storageKey: string): Record<string, T> {
+    if (typeof window === 'undefined') return {};
+    try {
+        const raw = window.localStorage.getItem(storageKey);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};
+    }
 }
 
 interface ParticipantAudioContextValue {
@@ -27,9 +39,23 @@ const ParticipantAudioContext = createContext<ParticipantAudioContextValue | nul
 
 export function ParticipantAudioProvider({ children }: { children: React.ReactNode }) {
     const room = useRoomContext();
-    const [volumes, setVolumes] = useState<Record<string, number>>({});
-    const [muted, setMuted] = useState<Record<string, boolean>>({});
+    const [volumes, setVolumes] = useState<Record<string, number>>(() => loadStoredRecord(VOLUMES_STORAGE_KEY));
+    const [muted, setMuted] = useState<Record<string, boolean>>(() => loadStoredRecord(MUTED_STORAGE_KEY));
     const [isDeafened, setIsDeafened] = useState(false);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(VOLUMES_STORAGE_KEY, JSON.stringify(volumes));
+        } catch {
+        }
+    }, [volumes]);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(MUTED_STORAGE_KEY, JSON.stringify(muted));
+        } catch {
+        }
+    }, [muted]);
 
     const effectiveVolume = useCallback((key: string) => {
         if (isDeafened || muted[key]) return 0;
