@@ -58,11 +58,20 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVide
         e.stopPropagation();
         if (!focusedTrack || !isTrackReference(focusedTrack)) return;
         const key = `${focusedTrack.participant.identity}-${focusedTrack.source}`;
-        const publication = focusedTrack.publication;
         const isPaused = pausedKeys.has(key);
-        if (publication instanceof RemoteTrackPublication) {
-            publication.setSubscribed(isPaused);
+        const nextSubscribed = isPaused;
+
+        const videoPublication = focusedTrack.publication;
+        if (videoPublication instanceof RemoteTrackPublication) {
+            videoPublication.setSubscribed(nextSubscribed);
         }
+
+        focusedTrack.participant.audioTrackPublications.forEach((pub) => {
+            if (pub.source === Track.Source.ScreenShareAudio && pub instanceof RemoteTrackPublication) {
+                pub.setSubscribed(nextSubscribed);
+            }
+        });
+
         setPausedKeys((prev) => {
             const next = new Set(prev);
             if (isPaused) next.delete(key);

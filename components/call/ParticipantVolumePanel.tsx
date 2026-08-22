@@ -2,6 +2,7 @@
 
 import { Volume2, VolumeX } from 'lucide-react';
 import { useParticipantAudio } from './ParticipantAudioContext';
+import { cn } from '@/lib/utils';
 
 interface ParticipantVolumePanelProps {
     volumeKey: string;
@@ -18,7 +19,7 @@ export function ParticipantVolumePanel({ volumeKey, name, className, muteLabel =
 
     return (
         <div
-            className={`w-full bg-[#1F2023] border border-white/8 rounded-xl shadow-xl p-3 flex flex-col gap-2.5 ${className ?? ''}`}
+            className={cn('w-full bg-[#1F2023] border border-white/8 rounded-xl shadow-xl p-3 flex flex-col gap-2.5', className)}
             onClick={(e) => e.stopPropagation()}
         >
             <div className="flex items-center justify-between gap-2">
