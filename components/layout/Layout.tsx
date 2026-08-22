@@ -197,7 +197,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                                         </div>
                                         {isOpen && (
                                             <div className="px-3 pb-2 pt-1">
-                                                <ParticipantVolumePanel identity={p.identity} name={p.name || p.identity} />
+                                                <ParticipantVolumePanel volumeKey={p.identity} name={p.name || p.identity} />
                                             </div>
                                         )}
                                     </div>

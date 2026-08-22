@@ -1,16 +1,24 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { RemoteAudioTrack, RoomEvent, type RemoteParticipant, type Track } from 'livekit-client';
+import { RemoteAudioTrack, RoomEvent, Track, type RemoteParticipant, type RemoteTrackPublication } from 'livekit-client';
 import { useRoomContext } from '@livekit/components-react';
 
 const DEFAULT_VOLUME = 0.5;
 
+export function getScreenShareVolumeKey(identity: string) {
+    return `${identity}::screen`;
+}
+
+function keyForPublication(identity: string, pub: RemoteTrackPublication) {
+    return pub.source === Track.Source.ScreenShareAudio ? getScreenShareVolumeKey(identity) : identity;
+}
+
 interface ParticipantAudioContextValue {
-    getVolume: (identity: string) => number;
-    setVolume: (identity: string, volume: number) => void;
-    isMuted: (identity: string) => boolean;
-    toggleMute: (identity: string) => void;
+    getVolume: (key: string) => number;
+    setVolume: (key: string, volume: number) => void;
+    isMuted: (key: string) => boolean;
+    toggleMute: (key: string) => void;
     isDeafened: boolean;
     toggleDeafen: () => void;
 }
@@ -23,18 +31,17 @@ export function ParticipantAudioProvider({ children }: { children: React.ReactNo
     const [muted, setMuted] = useState<Record<string, boolean>>({});
     const [isDeafened, setIsDeafened] = useState(false);
 
-    const effectiveVolume = useCallback((identity: string) => {
-        if (isDeafened || muted[identity]) return 0;
-        return volumes[identity] ?? DEFAULT_VOLUME;
+    const effectiveVolume = useCallback((key: string) => {
+        if (isDeafened || muted[key]) return 0;
+        return volumes[key] ?? DEFAULT_VOLUME;
     }, [volumes, muted, isDeafened]);
 
     const applyToParticipant = useCallback((identity: string) => {
         const participant = room.remoteParticipants.get(identity);
         if (!participant) return;
-        const vol = effectiveVolume(identity);
         participant.audioTrackPublications.forEach((pub) => {
             if (pub.audioTrack instanceof RemoteAudioTrack) {
-                pub.audioTrack.setVolume(vol);
+                pub.audioTrack.setVolume(effectiveVolume(keyForPublication(identity, pub)));
             }
         });
     }, [room, effectiveVolume]);
@@ -59,17 +66,17 @@ export function ParticipantAudioProvider({ children }: { children: React.ReactNo
         };
     }, [room, applyToParticipant]);
 
-    const getVolume = useCallback((identity: string) => volumes[identity] ?? DEFAULT_VOLUME, [volumes]);
+    const getVolume = useCallback((key: string) => volumes[key] ?? DEFAULT_VOLUME, [volumes]);
 
-    const setVolume = useCallback((identity: string, volume: number) => {
+    const setVolume = useCallback((key: string, volume: number) => {
         const clamped = Math.min(1, Math.max(0, volume));
-        setVolumes((prev) => ({ ...prev, [identity]: clamped }));
+        setVolumes((prev) => ({ ...prev, [key]: clamped }));
     }, []);
 
-    const isMuted = useCallback((identity: string) => !!muted[identity], [muted]);
+    const isMuted = useCallback((key: string) => !!muted[key], [muted]);
 
-    const toggleMute = useCallback((identity: string) => {
-        setMuted((prev) => ({ ...prev, [identity]: !prev[identity] }));
+    const toggleMute = useCallback((key: string) => {
+        setMuted((prev) => ({ ...prev, [key]: !prev[key] }));
     }, []);
 
     const toggleDeafen = useCallback(() => {
