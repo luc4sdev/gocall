@@ -25,10 +25,12 @@ export function setNoiseSuppressionPreference(value: boolean) {
 }
 
 export function getAudioCaptureOptions() {
+    const noiseSuppression = getNoiseSuppressionPreference();
     return {
-        noiseSuppression: getNoiseSuppressionPreference(),
+        noiseSuppression,
         echoCancellation: true,
         autoGainControl: true,
+        voiceIsolation: noiseSuppression,
     };
 }
 
