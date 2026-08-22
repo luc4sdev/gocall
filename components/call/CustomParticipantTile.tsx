@@ -10,8 +10,8 @@ import {
     AudioTrack,
     isTrackReference,
     useEnsureTrackRef,
+    type TrackReferenceOrPlaceholder,
 } from '@livekit/components-react';
-import type { TrackReferenceOrPlaceholder } from '@livekit/components-core';
 import { ScreenShare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
