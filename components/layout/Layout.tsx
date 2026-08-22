@@ -3,25 +3,35 @@ import { Hash, Volume2, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOf
 import { Participant, RemoteAudioTrack, RoomEvent, Track } from 'livekit-client';
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
 import { playDiscordSound } from '@/lib/utils';
+import type { ChannelDTO } from '@/lib/types';
+import { SettingsModal } from './SettingsModal';
+import { MembersSidebar } from './MembersSidebar';
 
 interface DiscordLayoutProps {
     children: React.ReactNode;
+    serverName: string;
+    channels: ChannelDTO[];
     activeChannelId: string;
     onChannelSelect: (channelId: string) => void;
     isConnected: boolean;
     onLeaveCall: () => void;
     activeParticipants?: Participant[];
     username: string;
+    hideMembersSidebar?: boolean;
 }
 
-export function Layout({ children, activeChannelId, onChannelSelect, isConnected, onLeaveCall, activeParticipants = [], username }: DiscordLayoutProps) {
+export function Layout({ children, serverName, channels, activeChannelId, onChannelSelect, isConnected, onLeaveCall, activeParticipants = [], username, hideMembersSidebar = false }: DiscordLayoutProps) {
     const room = useRoomContext();
     const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
     const [isDeafened, setIsDeafened] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     const callParticipants = activeParticipants.filter(
         (p) => p.identity !== localParticipant.identity && p.attributes?.inCall === 'true'
     );
+
+    const textChannels = channels.filter((c) => c.type === 'TEXT');
+    const voiceChannels = channels.filter((c) => c.type === 'VOICE');
 
     const handleLeaveCall = async () => {
         await localParticipant.setMicrophoneEnabled(false);
@@ -91,47 +101,57 @@ export function Layout({ children, activeChannelId, onChannelSelect, isConnected
 
             <div className="w-64 bg-[#16171A] flex flex-col shrink-0">
                 <div className="h-14 px-4 flex items-center shrink-0 border-b border-white/4">
-                    <span className="font-display font-semibold text-[15px] tracking-tight">Servidor Oficial</span>
+                    <span className="font-display font-semibold text-[15px] tracking-tight truncate">{serverName}</span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-2 py-4">
-                    <div className="mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
-                        Texto
-                    </div>
-                    <button
-                        onClick={() => onChannelSelect('general')}
-                        className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 mb-0.5 text-[14px] transition-colors rounded-lg"
-                    >
-                        {activeChannelId === 'general' && (
-                            <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
-                        )}
-                        <Hash
-                            size={17}
-                            className={activeChannelId === 'general' ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
-                        />
-                        <span className={activeChannelId === 'general' ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
-                            geral
-                        </span>
-                    </button>
+                    {textChannels.length > 0 && (
+                        <div className="mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
+                            Texto
+                        </div>
+                    )}
+                    {textChannels.map((channel) => (
+                        <button
+                            key={channel.id}
+                            onClick={() => onChannelSelect(channel.id)}
+                            className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 mb-0.5 text-[14px] transition-colors rounded-lg"
+                        >
+                            {activeChannelId === channel.id && (
+                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
+                            )}
+                            <Hash
+                                size={17}
+                                className={activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
+                            />
+                            <span className={activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
+                                {channel.name}
+                            </span>
+                        </button>
+                    ))}
 
-                    <div className="mt-5 mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
-                        Voz
-                    </div>
-                    <button
-                        onClick={() => onChannelSelect('geral-voz')}
-                        className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
-                    >
-                        {activeChannelId === 'geral-voz' && (
-                            <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
-                        )}
-                        <Volume2
-                            size={17}
-                            className={activeChannelId === 'geral-voz' ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
-                        />
-                        <span className={activeChannelId === 'geral-voz' ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
-                            Geral
-                        </span>
-                    </button>
+                    {voiceChannels.length > 0 && (
+                        <div className="mt-5 mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
+                            Voz
+                        </div>
+                    )}
+                    {voiceChannels.map((channel) => (
+                        <button
+                            key={channel.id}
+                            onClick={() => onChannelSelect(channel.id)}
+                            className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
+                        >
+                            {activeChannelId === channel.id && (
+                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
+                            )}
+                            <Volume2
+                                size={17}
+                                className={activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
+                            />
+                            <span className={activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
+                                {channel.name}
+                            </span>
+                        </button>
+                    ))}
 
                     {(isConnected || callParticipants.length > 0) && (
                         <div className="ml-3 mt-1 flex flex-col gap-0.5">
@@ -223,7 +243,11 @@ export function Layout({ children, activeChannelId, onChannelSelect, isConnected
                             {isDeafened ? <HeadphoneOff size={16} /> : <Headphones size={16} />}
                         </button>
 
-                        <button className="p-2 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors" title="Configurações">
+                        <button
+                            onClick={() => setShowSettings(true)}
+                            className="p-2 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors"
+                            title="Configurações"
+                        >
                             <Settings size={16} />
                         </button>
                     </div>
@@ -233,6 +257,12 @@ export function Layout({ children, activeChannelId, onChannelSelect, isConnected
             <div className="flex-1 flex flex-col min-w-0 bg-[#0F1012]">
                 {children}
             </div>
+
+            {!hideMembersSidebar && (
+                <MembersSidebar participants={activeParticipants} localIdentity={localParticipant.identity} />
+            )}
+
+            <SettingsModal open={showSettings} onOpenChange={setShowSettings} username={username} />
         </div>
     );
 }

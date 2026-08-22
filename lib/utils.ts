@@ -11,22 +11,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const USERNAME_STORAGE_KEY = 'gocall-username';
-
-export function getStoredUsername() {
-    const fallback = `User_${Math.floor(Math.random() * 1000)}`;
-    if (typeof window === 'undefined') return fallback;
-
-    const stored = window.localStorage.getItem(USERNAME_STORAGE_KEY);
-    if (stored) return stored;
-
-    const entered = window.prompt('Como você quer ser chamado no GoCall?', '')?.trim();
-    const resolved = entered || fallback;
-    window.localStorage.setItem(USERNAME_STORAGE_KEY, resolved);
-    return resolved;
-}
-
-type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen';
+type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop';
 
 function playTone(
     ctx: AudioContext,
@@ -82,9 +67,18 @@ export function playDiscordSound(type: SoundType) {
                 playTone(ctx, 420, now, 0.06, { type: 'triangle', peakGain: 0.09 });
                 playTone(ctx, 600, now + 0.05, 0.1, { type: 'triangle', peakGain: 0.09 });
                 break;
+            case 'screenshare-start':
+                playTone(ctx, 440, now, 0.08, { peakGain: 0.11 });
+                playTone(ctx, 554.37, now + 0.07, 0.08, { peakGain: 0.11 });
+                playTone(ctx, 659.25, now + 0.14, 0.16, { peakGain: 0.11 });
+                break;
+            case 'screenshare-stop':
+                playTone(ctx, 554.37, now, 0.08, { peakGain: 0.1 });
+                playTone(ctx, 415.3, now + 0.07, 0.18, { peakGain: 0.1 });
+                break;
         }
 
-        const closeAfter = type === 'join' || type === 'leave' ? 500 : 300;
+        const closeAfter = type === 'join' || type === 'leave' || type === 'screenshare-start' ? 500 : 300;
         setTimeout(() => ctx.close().catch(() => {}), closeAfter);
     } catch {
         console.error("Áudio bloqueado pelo navegador");

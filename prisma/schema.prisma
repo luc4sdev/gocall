@@ -11,3 +11,58 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum ChannelType {
+  TEXT
+  VOICE
+}
+
+model User {
+  id        String    @id @default(cuid())
+  username  String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@map("users")
+}
+
+model Server {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  channels  Channel[]
+
+  @@map("servers")
+}
+
+model Channel {
+  id        String      @id @default(cuid())
+  name      String
+  type      ChannelType
+  // Identifies the LiveKit room for VOICE channels (unused for TEXT channels).
+  roomName  String?
+  server    Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId  String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  messages  Message[]
+
+  @@unique([serverId, name, type])
+  @@map("channels")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+
+  @@index([channelId, createdAt])
+  @@map("messages")
+}

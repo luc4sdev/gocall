@@ -1,21 +1,39 @@
 import { useLocalParticipant } from '@livekit/components-react';
 import { VideoPresets } from 'livekit-client';
-import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff } from 'lucide-react';
-import { useState } from 'react';
+import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Monitor } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { playDiscordSound } from '@/lib/utils';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
 
 const RESOLUTIONS = [
-    { label: '720p', preset: VideoPresets.h720 },
-    { label: '1080p', preset: VideoPresets.h1080 },
-    { label: '1440p', preset: VideoPresets.h1440 },
+    { label: '720p', description: 'Boa qualidade, menor consumo de rede', preset: VideoPresets.h720 },
+    { label: '1080p', description: 'Recomendado para a maioria das telas', preset: VideoPresets.h1080 },
+    { label: '1440p', description: 'Alta definição, exige mais banda', preset: VideoPresets.h1440 },
 ] as const;
 
 export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
     const { isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled, localParticipant } = useLocalParticipant();
-    const [showShareMenu, setShowShareMenu] = useState(false);
+    const [showShareDialog, setShowShareDialog] = useState(false);
+
+    const prevScreenShareRef = useRef(isScreenShareEnabled);
+    const isLeavingRef = useRef(false);
+    useEffect(() => {
+        if (prevScreenShareRef.current !== isScreenShareEnabled) {
+            if (!isLeavingRef.current) {
+                playDiscordSound(isScreenShareEnabled ? 'screenshare-start' : 'screenshare-stop');
+            }
+            prevScreenShareRef.current = isScreenShareEnabled;
+        }
+    }, [isScreenShareEnabled]);
 
     const startScreenShare = async (resolution: typeof RESOLUTIONS[number]['preset']) => {
-        setShowShareMenu(false);
+        setShowShareDialog(false);
         try {
             await localParticipant.setScreenShareEnabled(true, {
                 audio: true,
@@ -28,6 +46,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
     };
 
     const handleLeave = async () => {
+        isLeavingRef.current = true;
         await localParticipant.setMicrophoneEnabled(false);
         await localParticipant.setCameraEnabled(false);
         await localParticipant.setScreenShareEnabled(false);
@@ -63,35 +82,48 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                 {isCameraEnabled ? <Video size={18} /> : <VideoOff size={18} />}
             </button>
 
-            <div className="relative">
-                <button
-                    onClick={() => isScreenShareEnabled
-                        ? localParticipant.setScreenShareEnabled(false)
-                        : setShowShareMenu(v => !v)
-                    }
-                    className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isScreenShareEnabled
-                        ? 'bg-[#FF6B4A] text-[#0F1012] hover:bg-[#FF7D5F]'
-                        : 'bg-[#1F2023] text-[#8B8D93] hover:bg-[#26282c] hover:text-[#EDEBE7]'
-                        }`}
-                    title={isScreenShareEnabled ? 'Parar compartilhamento' : 'Compartilhar tela'}
-                >
-                    {isScreenShareEnabled ? <ScreenShareOff size={18} /> : <ScreenShare size={18} />}
-                </button>
+            <button
+                onClick={() => isScreenShareEnabled
+                    ? localParticipant.setScreenShareEnabled(false)
+                    : setShowShareDialog(true)
+                }
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isScreenShareEnabled
+                    ? 'bg-[#FF6B4A] text-[#0F1012] hover:bg-[#FF7D5F]'
+                    : 'bg-[#1F2023] text-[#8B8D93] hover:bg-[#26282c] hover:text-[#EDEBE7]'
+                    }`}
+                title={isScreenShareEnabled ? 'Parar compartilhamento' : 'Compartilhar tela'}
+            >
+                {isScreenShareEnabled ? <ScreenShareOff size={18} /> : <ScreenShare size={18} />}
+            </button>
 
-                {showShareMenu && (
-                    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 bg-[#1F2023] rounded-xl p-1.5 shadow-xl border border-white/6 w-40">
-                        {RESOLUTIONS.map(r => (
+            <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+                <DialogContent className="bg-[#16171A] ring-white/6 sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="text-[#EDEBE7]">Compartilhar tela</DialogTitle>
+                        <DialogDescription className="text-[#8B8D93]">
+                            Escolha a qualidade da transmissão.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-2">
+                        {RESOLUTIONS.map((r) => (
                             <button
                                 key={r.label}
                                 onClick={() => startScreenShare(r.preset)}
-                                className="w-full text-left px-3 py-2 text-[13px] text-[#EDEBE7] hover:bg-white/5 rounded-lg transition-colors"
+                                className="group w-full flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-[#1F2023] hover:bg-[#26282c] hover:border-[#FF6B4A]/40 px-4 py-3 text-left transition-colors"
                             >
-                                {r.label}
+                                <div className="flex flex-col">
+                                    <span className="text-[14px] font-medium text-[#EDEBE7] group-hover:text-[#FF6B4A] transition-colors">
+                                        {r.label}
+                                    </span>
+                                    <span className="text-[12px] text-[#8B8D93]">{r.description}</span>
+                                </div>
+                                <Monitor size={18} className="text-[#63656B] group-hover:text-[#FF6B4A] transition-colors shrink-0" />
                             </button>
                         ))}
                     </div>
-                )}
-            </div>
+                </DialogContent>
+            </Dialog>
 
             <div className="w-px h-6 bg-white/6 mx-2" />
 
