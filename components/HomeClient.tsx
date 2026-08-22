@@ -10,6 +10,7 @@ import { LiveKitRoom, RoomAudioRenderer, StartAudio, useParticipants } from '@li
 import { ChatChannel } from '@/components/chat/ChatChanel';
 import { VoiceChannelGate } from '@/components/call/VoiceChannelGate';
 import { ParticipantAudioProvider } from '@/components/call/ParticipantAudioContext';
+import { CallPresenceSounds } from '@/components/call/CallPresenceSounds';
 import type { ServerDTO } from '@/lib/types';
 
 function ParticipantsSpy({ onChange }: { onChange: (p: Participant[]) => void }) {
@@ -99,6 +100,7 @@ export function HomeClient({ username }: { username: string }) {
       <ParticipantAudioProvider>
         <ParticipantsSpy onChange={setParticipants} />
         {voiceJoined && <RoomAudioRenderer />}
+        {voiceJoined && <CallPresenceSounds />}
         <StartAudio
           label="Clique para ativar o áudio"
           className="fixed! bottom-5! left-1/2! -translate-x-1/2! z-50! bg-[#FF6B4A]! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-[#FF7D5F]! transition-colors"

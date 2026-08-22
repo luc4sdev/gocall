@@ -3,7 +3,7 @@
 import { Volume2 } from 'lucide-react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { useState } from 'react';
-import { getAudioCaptureOptions } from '@/lib/utils';
+import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
 
 export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
     const { localParticipant } = useLocalParticipant();
@@ -14,6 +14,7 @@ export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
         try {
             await localParticipant.setMicrophoneEnabled(true, getAudioCaptureOptions());
             await localParticipant.setAttributes({ inCall: 'true' });
+            playDiscordSound('join');
             onJoin();
         } catch (err) {
             console.error('Não foi possível ativar o microfone', err);
