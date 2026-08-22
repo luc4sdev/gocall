@@ -17,18 +17,18 @@ export function VoiceRoom({ onLeave, theaterMode, onTheaterModeChange }: VoiceRo
     const participants = useParticipants();
     const { localParticipant } = useLocalParticipant();
     const knownInCallRef = useRef<Set<string> | null>(null);
+    const knownSharingRef = useRef<Set<string> | null>(null);
 
     useEffect(() => {
         playDiscordSound('join');
     }, []);
 
     useEffect(() => {
-        const currentInCall = new Set(
-            participants
-                .filter((p) => p.identity !== localParticipant.identity && p.attributes?.inCall === 'true')
-                .map((p) => p.identity)
-        );
+        const remoteParticipants = participants.filter((p) => p.identity !== localParticipant.identity);
 
+        const currentInCall = new Set(
+            remoteParticipants.filter((p) => p.attributes?.inCall === 'true').map((p) => p.identity)
+        );
         const previousInCall = knownInCallRef.current;
         if (previousInCall) {
             for (const identity of currentInCall) {
@@ -39,6 +39,20 @@ export function VoiceRoom({ onLeave, theaterMode, onTheaterModeChange }: VoiceRo
             }
         }
         knownInCallRef.current = currentInCall;
+
+        const currentSharing = new Set(
+            remoteParticipants.filter((p) => p.isScreenShareEnabled).map((p) => p.identity)
+        );
+        const previousSharing = knownSharingRef.current;
+        if (previousSharing) {
+            for (const identity of currentSharing) {
+                if (!previousSharing.has(identity)) playDiscordSound('screenshare-start');
+            }
+            for (const identity of previousSharing) {
+                if (!currentSharing.has(identity)) playDiscordSound('screenshare-stop');
+            }
+        }
+        knownSharingRef.current = currentSharing;
     }, [participants, localParticipant.identity]);
 
     return (
