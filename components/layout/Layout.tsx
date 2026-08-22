@@ -266,7 +266,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col min-w-0 bg-[#0F1012]">
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#0F1012]">
                 {children}
             </div>
 

@@ -19,7 +19,7 @@ export function VoiceRoom({ onLeave, theaterMode, onTheaterModeChange }: VoiceRo
     }, []);
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-[#0B0C0D]">
+        <div className="flex-1 flex flex-col min-h-0 bg-[#0B0C0D]">
             <div className="flex-1 min-h-0 relative">
                 <CustomVideoGrid theaterMode={theaterMode} onTheaterModeChange={onTheaterModeChange} />
             </div>
