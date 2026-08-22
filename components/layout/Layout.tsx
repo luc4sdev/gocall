@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ScreenShare } from 'lucide-react';
+import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ScreenShare, ArrowLeft, Users, X } from 'lucide-react';
 import { Participant } from 'livekit-client';
 import { useLocalParticipant } from '@livekit/components-react';
 import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
@@ -36,6 +36,13 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
     const { isDeafened, toggleDeafen: toggleDeafenState, isMuted } = useParticipantAudio();
     const [showSettings, setShowSettings] = useState(false);
     const [openVolumeIdentity, setOpenVolumeIdentity] = useState<string | null>(null);
+    const [mobileView, setMobileView] = useState<'sidebar' | 'content'>('sidebar');
+    const [showMembersMobile, setShowMembersMobile] = useState(false);
+
+    const handleChannelSelect = (channelId: string) => {
+        onChannelSelect(channelId);
+        setMobileView('content');
+    };
 
     const callParticipants = activeParticipants.filter(
         (p) => p.identity !== localParticipant.identity && p.attributes?.inCall === 'true'
@@ -79,7 +86,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
     return (
         <div className="flex h-screen bg-[#0F1012] text-[#EDEBE7] overflow-hidden font-sans antialiased">
 
-            <div className="w-16 bg-[#0B0C0D] flex flex-col items-center py-4 gap-3 shrink-0 border-r border-white/4">
+            <div className="hidden lg:flex w-16 bg-[#0B0C0D] flex-col items-center py-4 gap-3 shrink-0 border-r border-white/4">
                 <div className="relative group cursor-pointer">
                     <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#FF6B4A] rounded-full" />
                     <div className="w-11 h-11 rounded-2xl bg-[#1F2023] flex items-center justify-center transition-colors group-hover:bg-[#26282c]">
@@ -88,7 +95,9 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                 </div>
             </div>
 
-            <div className="w-64 bg-[#16171A] flex flex-col shrink-0">
+            <div
+                className={`w-full lg:w-64 bg-[#16171A] flex-col shrink-0 ${mobileView === 'sidebar' ? 'flex' : 'hidden'} lg:flex`}
+            >
                 <div className="h-14 px-4 flex items-center shrink-0 border-b border-white/4">
                     <span className="font-display font-semibold text-[15px] tracking-tight truncate">{serverName}</span>
                 </div>
@@ -102,7 +111,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                     {textChannels.map((channel) => (
                         <button
                             key={channel.id}
-                            onClick={() => onChannelSelect(channel.id)}
+                            onClick={() => handleChannelSelect(channel.id)}
                             className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 mb-0.5 text-[14px] transition-colors rounded-lg"
                         >
                             {activeChannelId === channel.id && (
@@ -126,7 +135,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                     {voiceChannels.map((channel) => (
                         <button
                             key={channel.id}
-                            onClick={() => onChannelSelect(channel.id)}
+                            onClick={() => handleChannelSelect(channel.id)}
                             className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
                         >
                             {activeChannelId === channel.id && (
@@ -266,12 +275,54 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#0F1012]">
-                {children}
+            <div
+                className={`w-full lg:w-auto flex-1 flex-col min-w-0 min-h-0 bg-[#0F1012] ${mobileView === 'content' ? 'flex' : 'hidden'} lg:flex`}
+            >
+                <div className="lg:hidden h-12 px-2 flex items-center justify-between gap-2 border-b border-white/4 shrink-0">
+                    <button
+                        onClick={() => setMobileView('sidebar')}
+                        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors text-[13px]"
+                    >
+                        <ArrowLeft size={16} />
+                        Canais
+                    </button>
+                    {!hideMembersSidebar && (
+                        <button
+                            onClick={() => setShowMembersMobile(true)}
+                            className="p-2 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors"
+                            title="Membros"
+                        >
+                            <Users size={17} />
+                        </button>
+                    )}
+                </div>
+                <div className="flex-1 flex flex-col min-h-0">
+                    {children}
+                </div>
             </div>
 
             {!hideMembersSidebar && (
-                <MembersSidebar participants={activeParticipants} localIdentity={localParticipant.identity} />
+                <div className="hidden lg:flex">
+                    <MembersSidebar participants={activeParticipants} localIdentity={localParticipant.identity} />
+                </div>
+            )}
+
+            {showMembersMobile && !hideMembersSidebar && (
+                <div
+                    className="lg:hidden fixed inset-0 z-40 flex justify-end bg-black/50"
+                    onClick={() => setShowMembersMobile(false)}
+                >
+                    <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowMembersMobile(false)}
+                            className="absolute top-3 -left-11 p-2 rounded-lg bg-[#16171A] text-[#8B8D93] hover:text-[#EDEBE7] transition-colors"
+                            title="Fechar"
+                        >
+                            <X size={18} />
+                        </button>
+                        <MembersSidebar participants={activeParticipants} localIdentity={localParticipant.identity} />
+                    </div>
+                </div>
             )}
 
             <SettingsModal open={showSettings} onOpenChange={setShowSettings} username={username} />

@@ -120,7 +120,7 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVide
                     ) : (
                         <CustomParticipantTile trackRef={focusedTrack} className="object-contain" />
                     )}
-                    <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-10">
+                    <div className="absolute top-2 right-2 lg:top-4 lg:right-4 flex items-center gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all z-10">
                         {!isLocalShare && !isPaused && (
                             <div className="relative" ref={volumeRef}>
                                 <button

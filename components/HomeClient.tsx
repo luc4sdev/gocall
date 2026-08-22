@@ -117,9 +117,9 @@ export function HomeClient({ username }: { username: string }) {
           username={username}
           hideMembersSidebar={theaterMode}
         >
-          <div className="h-14 px-5 flex items-center border-b border-white/4 bg-[#16171A] shrink-0 z-10">
-            {activeChannelData?.type === 'TEXT' ? <Hash size={20} className="text-[#63656B] mr-2" /> : <Volume2 size={20} className="text-[#63656B] mr-2" />}
-            <span className="font-display font-semibold text-[15px]">
+          <div className="h-14 px-3 sm:px-5 flex items-center min-w-0 border-b border-white/4 bg-[#16171A] shrink-0 z-10">
+            {activeChannelData?.type === 'TEXT' ? <Hash size={20} className="text-[#63656B] mr-2 shrink-0" /> : <Volume2 size={20} className="text-[#63656B] mr-2 shrink-0" />}
+            <span className="font-display font-semibold text-[15px] truncate min-w-0">
               {activeChannelData?.name}
             </span>
           </div>

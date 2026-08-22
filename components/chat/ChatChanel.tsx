@@ -92,9 +92,9 @@ export function ChatChannel({ channelId }: ChatChannelProps) {
     };
 
     return (
-        <div className="flex-1 flex flex-col bg-[#313338] p-4 min-h-0">
+        <div className="flex-1 flex flex-col bg-[#313338] p-2 sm:p-4 min-h-0">
 
-            <div className="flex-1 overflow-y-auto flex flex-col justify-end mb-4 pr-2 space-y-4">
+            <div className="flex-1 overflow-y-auto flex flex-col justify-end mb-4 pr-1 sm:pr-2 space-y-3 sm:space-y-4">
                 {isLoadingHistory ? (
                     <div className="flex-1 flex items-center justify-center text-gray-400">
                         <Loader2 size={24} className="animate-spin" />
@@ -113,7 +113,7 @@ export function ChatChannel({ channelId }: ChatChannelProps) {
                         return (
                             <div
                                 key={msg.key}
-                                className={`flex items-start gap-4 p-2 rounded-md transition-colors border-l-2 ${isOwn
+                                className={`flex items-start gap-2 sm:gap-4 p-2 rounded-md transition-colors border-l-2 ${isOwn
                                     ? 'bg-[#FF6B4A]/8 border-[#FF6B4A] hover:bg-[#FF6B4A]/12'
                                     : 'border-transparent hover:bg-[#2B2D31]'
                                     }`}
