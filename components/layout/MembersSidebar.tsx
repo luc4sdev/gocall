@@ -20,8 +20,7 @@ function MemberRow({ member }: { member: Member }) {
         <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer">
             <div className="relative shrink-0">
                 <div
-                    className={`w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium overflow-hidden transition-shadow ${member.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
-                        }`}
+                    className='w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium overflow-hidden transition-shadow'
                 >
                     {member.name[0]?.toUpperCase()}
                 </div>
