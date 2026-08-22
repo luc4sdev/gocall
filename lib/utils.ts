@@ -34,33 +34,6 @@ export function getAudioCaptureOptions() {
     };
 }
 
-/**
- * Anexa (ou remove) o filtro de ruído por IA (RNNoise) na faixa de microfone já publicada.
- * Precisa ser chamado DEPOIS do microfone estar ligado — o LiveKit exige que o AudioContext
- * da sala já esteja pronto antes de aceitar um processor, o que não é garantido se o processor
- * for passado junto na hora de criar a faixa.
- */
-export async function applyNoiseFilter(track: import('livekit-client').LocalAudioTrack | undefined) {
-    if (!track) return;
-    const noiseSuppression = getNoiseSuppressionPreference();
-
-    if (!noiseSuppression) {
-        if (track.getProcessor()) {
-            await track.stopProcessor().catch(() => { });
-        }
-        return;
-    }
-
-    try {
-        const { DenoiseTrackProcessor } = await import('@cc-livekit/denoise-plugin');
-        if (!DenoiseTrackProcessor.isSupported()) return;
-        if (track.getProcessor()?.name === 'denoise-filter') return;
-        await track.setProcessor(new DenoiseTrackProcessor());
-    } catch (err) {
-        console.error('Não foi possível aplicar o filtro de ruído por IA', err);
-    }
-}
-
 type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop';
 
 function playTone(

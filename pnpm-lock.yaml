@@ -8,9 +8,6 @@ dependencies:
   '@base-ui/react':
     specifier: ^1.7.0
     version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8)(react@19.2.8)
-  '@cc-livekit/denoise-plugin':
-    specifier: ^1.0.10
-    version: 1.0.10
   '@hookform/resolvers':
     specifier: ^5.9.1
     version: 5.9.1(react-hook-form@7.86.0)(zod@4.4.3)
@@ -435,12 +432,6 @@ packages:
 
   /@bufbuild/protobuf@1.10.1:
     resolution: {integrity: sha512-wJ8ReQbHxsAfXhrf9ixl0aYbZorRuOWpBNzm8pL8ftmSxQx/wnJD5Eg861NwJU/czy2VXFIebCeZnZrI9rktIQ==}
-    dev: false
-
-  /@cc-livekit/denoise-plugin@1.0.10:
-    resolution: {integrity: sha512-vws+M/kEFM0uKV3BzZozS/PqITRhtd7bnCVx7gsPxQNcMQ9MdVGzWBwE3YOhe6+Fdc+CmrKTFxF66OHJ+nguPQ==}
-    dependencies:
-      compute-lcm: 1.1.2
     dev: false
 
   /@dotenvx/dotenvx@1.75.1:
@@ -2865,23 +2856,6 @@ packages:
   /commander@14.0.3:
     resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
     engines: {node: '>=20'}
-    dev: false
-
-  /compute-gcd@1.2.1:
-    resolution: {integrity: sha512-TwMbxBNz0l71+8Sc4czv13h4kEqnchV9igQZBi6QUaz09dnz13juGnnaWWJTRsP3brxOoxeB4SA2WELLw1hCtg==}
-    dependencies:
-      validate.io-array: 1.0.6
-      validate.io-function: 1.0.2
-      validate.io-integer-array: 1.0.0
-    dev: false
-
-  /compute-lcm@1.1.2:
-    resolution: {integrity: sha512-OFNPdQAXnQhDSKioX8/XYT6sdUlXwpeMjfd6ApxMJfyZ4GxmLR1xvMERctlYhlHwIiz6CSpBc2+qYKjHGZw4TQ==}
-    dependencies:
-      compute-gcd: 1.2.1
-      validate.io-array: 1.0.6
-      validate.io-function: 1.0.2
-      validate.io-integer-array: 1.0.0
     dev: false
 
   /concat-map@0.0.1:
@@ -6638,31 +6612,6 @@ packages:
   /validate-npm-package-name@7.0.2:
     resolution: {integrity: sha512-hVDIBwsRruT73PbK7uP5ebUt+ezEtCmzZz3F59BSr2F6OVFnJ/6h8liuvdLrQ88Xmnk6/+xGGuq+pG9WwTuy3A==}
     engines: {node: ^20.17.0 || >=22.9.0}
-    dev: false
-
-  /validate.io-array@1.0.6:
-    resolution: {integrity: sha512-DeOy7CnPEziggrOO5CZhVKJw6S3Yi7e9e65R1Nl/RTN1vTQKnzjfvks0/8kQ40FP/dsjRAOd4hxmJ7uLa6vxkg==}
-    dev: false
-
-  /validate.io-function@1.0.2:
-    resolution: {integrity: sha512-LlFybRJEriSuBnUhQyG5bwglhh50EpTL2ul23MPIuR1odjO7XaMLFV8vHGwp7AZciFxtYOeiSCT5st+XSPONiQ==}
-    dev: false
-
-  /validate.io-integer-array@1.0.0:
-    resolution: {integrity: sha512-mTrMk/1ytQHtCY0oNO3dztafHYyGU88KL+jRxWuzfOmQb+4qqnWmI+gykvGp8usKZOM0H7keJHEbRaFiYA0VrA==}
-    dependencies:
-      validate.io-array: 1.0.6
-      validate.io-integer: 1.0.5
-    dev: false
-
-  /validate.io-integer@1.0.5:
-    resolution: {integrity: sha512-22izsYSLojN/P6bppBqhgUDjCkr5RY2jd+N2a3DCAUey8ydvrZ/OkGvFPR7qfOpwR2LC5p4Ngzxz36g5Vgr/hQ==}
-    dependencies:
-      validate.io-number: 1.0.3
-    dev: false
-
-  /validate.io-number@1.0.3:
-    resolution: {integrity: sha512-kRAyotcbNaSYoDnXvb4MHg/0a1egJdLwS6oJ38TJY7aw9n93Fl/3blIXdyYvPOp55CNxywooG/3BcrwNrBpcSg==}
     dev: false
 
   /vary@1.1.2:
