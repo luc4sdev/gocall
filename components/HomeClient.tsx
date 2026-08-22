@@ -35,7 +35,7 @@ export function HomeClient({ username }: { username: string }) {
 
   const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || "";
 
-  const roomOptions = useMemo<RoomOptions>(() => ({ dynacast: true }), []);
+  const roomOptions = useMemo<RoomOptions>(() => ({ dynacast: true, webAudioMix: true }), []);
 
   useEffect(() => {
     const init = async () => {
