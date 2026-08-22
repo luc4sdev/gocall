@@ -9,6 +9,7 @@ import { Participant } from 'livekit-client';
 import { LiveKitRoom, RoomAudioRenderer, StartAudio, useParticipants } from '@livekit/components-react';
 import { ChatChannel } from '@/components/chat/ChatChanel';
 import { VoiceChannelGate } from '@/components/call/VoiceChannelGate';
+import { ParticipantAudioProvider } from '@/components/call/ParticipantAudioContext';
 import type { ServerDTO } from '@/lib/types';
 
 function ParticipantsSpy({ onChange }: { onChange: (p: Participant[]) => void }) {
@@ -92,43 +93,45 @@ export function HomeClient({ username }: { username: string }) {
       data-lk-theme="default"
       className="flex-1 flex flex-col"
     >
-      <ParticipantsSpy onChange={setParticipants} />
-      {voiceJoined && <RoomAudioRenderer />}
-      <StartAudio
-        label="Clique para ativar o áudio"
-        className="fixed! bottom-5! left-1/2! -translate-x-1/2! z-50! bg-[#FF6B4A]! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-[#FF7D5F]! transition-colors"
-      />
+      <ParticipantAudioProvider>
+        <ParticipantsSpy onChange={setParticipants} />
+        {voiceJoined && <RoomAudioRenderer />}
+        <StartAudio
+          label="Clique para ativar o áudio"
+          className="fixed! bottom-5! left-1/2! -translate-x-1/2! z-50! bg-[#FF6B4A]! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-[#FF7D5F]! transition-colors"
+        />
 
-      <Layout
-        serverName={server.name}
-        channels={server.channels}
-        activeChannelId={activeChannel}
-        onChannelSelect={setActiveChannel}
-        isConnected={voiceJoined}
-        onLeaveCall={handleLeaveVoice}
-        activeParticipants={participants}
-        username={username}
-        hideMembersSidebar={theaterMode}
-      >
-        <div className="h-14 px-5 flex items-center border-b border-white/4 bg-[#16171A] shrink-0 z-10">
-          {activeChannelData?.type === 'TEXT' ? <Hash size={20} className="text-[#63656B] mr-2" /> : <Volume2 size={20} className="text-[#63656B] mr-2" />}
-          <span className="font-display font-semibold text-[15px]">
-            {activeChannelData?.name}
-          </span>
-        </div>
+        <Layout
+          serverName={server.name}
+          channels={server.channels}
+          activeChannelId={activeChannel}
+          onChannelSelect={setActiveChannel}
+          isConnected={voiceJoined}
+          onLeaveCall={handleLeaveVoice}
+          activeParticipants={participants}
+          username={username}
+          hideMembersSidebar={theaterMode}
+        >
+          <div className="h-14 px-5 flex items-center border-b border-white/4 bg-[#16171A] shrink-0 z-10">
+            {activeChannelData?.type === 'TEXT' ? <Hash size={20} className="text-[#63656B] mr-2" /> : <Volume2 size={20} className="text-[#63656B] mr-2" />}
+            <span className="font-display font-semibold text-[15px]">
+              {activeChannelData?.name}
+            </span>
+          </div>
 
-        {activeChannelData?.type === 'TEXT' ? (
-          <ChatChannel key={activeChannelData.id} channelId={activeChannelData.id} />
-        ) : voiceJoined ? (
-          <VoiceRoom
-            onLeave={handleLeaveVoice}
-            theaterMode={theaterMode}
-            onTheaterModeChange={setTheaterMode}
-          />
-        ) : (
-          <VoiceChannelGate onJoin={() => setVoiceJoined(true)} />
-        )}
-      </Layout>
+          {activeChannelData?.type === 'TEXT' ? (
+            <ChatChannel key={activeChannelData.id} channelId={activeChannelData.id} />
+          ) : voiceJoined ? (
+            <VoiceRoom
+              onLeave={handleLeaveVoice}
+              theaterMode={theaterMode}
+              onTheaterModeChange={setTheaterMode}
+            />
+          ) : (
+            <VoiceChannelGate onJoin={() => setVoiceJoined(true)} />
+          )}
+        </Layout>
+      </ParticipantAudioProvider>
     </LiveKitRoom>
   );
 }

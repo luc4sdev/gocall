@@ -3,6 +3,7 @@
 import { Volume2 } from 'lucide-react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { useState } from 'react';
+import { getAudioCaptureOptions } from '@/lib/utils';
 
 export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
     const { localParticipant } = useLocalParticipant();
@@ -11,7 +12,7 @@ export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
     const handleJoin = async () => {
         setIsConnecting(true);
         try {
-            await localParticipant.setMicrophoneEnabled(true);
+            await localParticipant.setMicrophoneEnabled(true, getAudioCaptureOptions());
             await localParticipant.setAttributes({ inCall: 'true' });
             onJoin();
         } catch (err) {

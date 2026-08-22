@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogOut, Loader2 } from 'lucide-react';
+import { useLocalParticipant } from '@livekit/components-react';
 
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validation/auth';
+import { getAudioCaptureOptions, getNoiseSuppressionPreference, setNoiseSuppressionPreference } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,9 +29,25 @@ interface SettingsModalProps {
 
 export function SettingsModal({ open, onOpenChange, username }: SettingsModalProps) {
     const router = useRouter();
+    const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
     const [serverError, setServerError] = useState('');
     const [success, setSuccess] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
+    const [noiseSuppression, setNoiseSuppression] = useState(getNoiseSuppressionPreference);
+
+    const handleToggleNoiseSuppression = async () => {
+        const next = !noiseSuppression;
+        setNoiseSuppression(next);
+        setNoiseSuppressionPreference(next);
+        if (isMicrophoneEnabled) {
+            try {
+                await localParticipant.setMicrophoneEnabled(false);
+                await localParticipant.setMicrophoneEnabled(true, getAudioCaptureOptions());
+            } catch (err) {
+                console.error('Não foi possível aplicar a supressão de ruído', err);
+            }
+        }
+    };
 
     const form = useForm<ChangePasswordInput>({
         resolver: zodResolver(changePasswordSchema),
@@ -84,6 +102,26 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
                     <DialogTitle>Configurações</DialogTitle>
                     <DialogDescription>Logado como {username}</DialogDescription>
                 </DialogHeader>
+
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-white/2 px-3 py-2.5">
+                    <div className="min-w-0">
+                        <p className="text-sm font-medium">Supressão de ruído</p>
+                        <p className="text-xs text-muted-foreground">Reduz ruídos de fundo captados pelo seu microfone.</p>
+                    </div>
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={noiseSuppression}
+                        onClick={handleToggleNoiseSuppression}
+                        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${noiseSuppression ? 'bg-[#FF6B4A]' : 'bg-white/15'
+                            }`}
+                    >
+                        <span
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${noiseSuppression ? 'translate-x-4' : 'translate-x-0'
+                                }`}
+                        />
+                    </button>
+                </div>
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">

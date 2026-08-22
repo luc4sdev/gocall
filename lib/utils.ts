@@ -11,6 +11,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const NOISE_SUPPRESSION_KEY = 'gocall:noiseSuppression';
+
+export function getNoiseSuppressionPreference(): boolean {
+    if (typeof window === 'undefined') return true;
+    const stored = window.localStorage.getItem(NOISE_SUPPRESSION_KEY);
+    return stored === null ? true : stored === 'true';
+}
+
+export function setNoiseSuppressionPreference(value: boolean) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(NOISE_SUPPRESSION_KEY, String(value));
+}
+
+export function getAudioCaptureOptions() {
+    return {
+        noiseSuppression: getNoiseSuppressionPreference(),
+        echoCancellation: true,
+        autoGainControl: true,
+    };
+}
+
 type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop';
 
 function playTone(

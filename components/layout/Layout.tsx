@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Hash, Volume2, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff } from 'lucide-react';
-import { Participant, RemoteAudioTrack, RoomEvent, Track } from 'livekit-client';
-import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
-import { playDiscordSound } from '@/lib/utils';
+import React, { useState } from 'react';
+import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff } from 'lucide-react';
+import { Participant } from 'livekit-client';
+import { useLocalParticipant } from '@livekit/components-react';
+import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
 import type { ChannelDTO } from '@/lib/types';
 import { SettingsModal } from './SettingsModal';
 import { MembersSidebar } from './MembersSidebar';
+import { useParticipantAudio } from '@/components/call/ParticipantAudioContext';
+import { ParticipantVolumePanel } from '@/components/call/ParticipantVolumePanel';
 
 interface DiscordLayoutProps {
     children: React.ReactNode;
@@ -21,10 +23,10 @@ interface DiscordLayoutProps {
 }
 
 export function Layout({ children, serverName, channels, activeChannelId, onChannelSelect, isConnected, onLeaveCall, activeParticipants = [], username, hideMembersSidebar = false }: DiscordLayoutProps) {
-    const room = useRoomContext();
     const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
-    const [isDeafened, setIsDeafened] = useState(false);
+    const { isDeafened, toggleDeafen: toggleDeafenState, isMuted } = useParticipantAudio();
     const [showSettings, setShowSettings] = useState(false);
+    const [openVolumeIdentity, setOpenVolumeIdentity] = useState<string | null>(null);
 
     const callParticipants = activeParticipants.filter(
         (p) => p.identity !== localParticipant.identity && p.attributes?.inCall === 'true'
@@ -44,41 +46,19 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
 
     const isInRoom = isConnected;
 
-    const applyDeafenState = useCallback((deafened: boolean) => {
-        room.remoteParticipants.forEach((participant) => {
-            participant.audioTrackPublications.forEach((pub) => {
-                if (pub.audioTrack instanceof RemoteAudioTrack) {
-                    pub.audioTrack.setVolume(deafened ? 0 : 1);
-                }
-            });
-        });
-    }, [room]);
-
-    useEffect(() => {
-        if (!isInRoom) return;
-        const handleSubscribed = (track: Track) => {
-            if (track instanceof RemoteAudioTrack && isDeafened) {
-                track.setVolume(0);
-            }
-        };
-        room.on(RoomEvent.TrackSubscribed, handleSubscribed);
-        return () => {
-            room.off(RoomEvent.TrackSubscribed, handleSubscribed);
-        };
-    }, [room, isInRoom, isDeafened]);
-
     const toggleMic = () => {
         if (!isInRoom) return;
         const next = !isMicrophoneEnabled;
         playDiscordSound(next ? 'unmute' : 'mute');
-        localParticipant.setMicrophoneEnabled(next).catch(console.error);
+        localParticipant
+            .setMicrophoneEnabled(next, next ? getAudioCaptureOptions() : undefined)
+            .catch(console.error);
     };
 
     const toggleDeafen = () => {
         if (!isInRoom) return;
         const next = !isDeafened;
-        setIsDeafened(next);
-        applyDeafenState(next);
+        toggleDeafenState();
         playDiscordSound(next ? 'deafen' : 'undeafen');
         if (next && isMicrophoneEnabled) {
             localParticipant.setMicrophoneEnabled(false).catch(console.error);
@@ -184,26 +164,45 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                                     </button>
                                 </div>
                             )}
-                            {callParticipants.map((p) => (
-                                <div key={p.identity} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer">
-                                    <div className="relative shrink-0">
+                            {callParticipants.map((p) => {
+                                const isOpen = openVolumeIdentity === p.identity;
+                                const muted = isMuted(p.identity);
+                                return (
+                                    <div key={p.identity}>
                                         <div
-                                            className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${p.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
-                                                }`}
+                                            onClick={() => setOpenVolumeIdentity((prev) => (prev === p.identity ? null : p.identity))}
+                                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer"
                                         >
-                                            {p.name?.[0]?.toUpperCase() || p.identity?.[0]?.toUpperCase()}
+                                            <div className="relative shrink-0">
+                                                <div
+                                                    className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${p.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
+                                                        }`}
+                                                >
+                                                    {p.name?.[0]?.toUpperCase() || p.identity?.[0]?.toUpperCase()}
+                                                </div>
+                                                {!p.isMicrophoneEnabled && (
+                                                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
+                                                        <MicOff size={9} className="text-[#8B8D93]" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className="text-[13px] text-[#B4B6BB] truncate flex-1 min-w-0">
+                                                {p.name || p.identity}
+                                            </span>
+                                            {muted ? (
+                                                <VolumeX size={14} className="text-[#F2555A] shrink-0" />
+                                            ) : (
+                                                <Volume2 size={14} className="text-[#63656B] shrink-0" />
+                                            )}
                                         </div>
-                                        {!p.isMicrophoneEnabled && (
-                                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
-                                                <MicOff size={9} className="text-[#8B8D93]" />
+                                        {isOpen && (
+                                            <div className="px-3 pb-2 pt-1">
+                                                <ParticipantVolumePanel identity={p.identity} name={p.name || p.identity} />
                                             </div>
                                         )}
                                     </div>
-                                    <span className="text-[13px] text-[#B4B6BB] truncate">
-                                        {p.name || p.identity}
-                                    </span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

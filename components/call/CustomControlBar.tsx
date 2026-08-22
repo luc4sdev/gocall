@@ -2,7 +2,7 @@ import { useLocalParticipant } from '@livekit/components-react';
 import { VideoPresets } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Monitor } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { playDiscordSound } from '@/lib/utils';
+import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
 import {
     Dialog,
     DialogContent,
@@ -60,7 +60,9 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                 onClick={() => {
                     const next = !isMicrophoneEnabled;
                     playDiscordSound(next ? 'unmute' : 'mute');
-                    localParticipant.setMicrophoneEnabled(next).catch(console.error);
+                    localParticipant
+                        .setMicrophoneEnabled(next, next ? getAudioCaptureOptions() : undefined)
+                        .catch(console.error);
                 }}
                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isMicrophoneEnabled
                     ? 'bg-[#1F2023] text-[#EDEBE7] hover:bg-[#26282c]'
