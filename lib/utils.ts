@@ -24,30 +24,41 @@ export function setNoiseSuppressionPreference(value: boolean) {
     window.localStorage.setItem(NOISE_SUPPRESSION_KEY, String(value));
 }
 
-export async function getAudioCaptureOptions() {
+export function getAudioCaptureOptions() {
     const noiseSuppression = getNoiseSuppressionPreference();
-
-    let processor: import('livekit-client').AudioCaptureOptions['processor'];
-    if (noiseSuppression && typeof window !== 'undefined') {
-        try {
-            const { DenoiseTrackProcessor } = await import('@cc-livekit/denoise-plugin');
-            if (DenoiseTrackProcessor.isSupported()) {
-                processor = new DenoiseTrackProcessor();
-            }
-        } catch {
-            // Falha ao carregar o filtro de ruído por IA — segue só com a supressão nativa do navegador.
-        }
-    }
-
     return {
-        // Com o processador de IA (RNNoise) ativo, ele substitui a supressão nativa do navegador
-        // em vez de somar a ela (evita os dois filtros brigando/distorcendo o áudio).
-        noiseSuppression: noiseSuppression && !processor,
+        noiseSuppression,
         echoCancellation: true,
         autoGainControl: true,
-        voiceIsolation: noiseSuppression && !processor,
-        processor,
+        voiceIsolation: noiseSuppression,
     };
+}
+
+/**
+ * Anexa (ou remove) o filtro de ruído por IA (RNNoise) na faixa de microfone já publicada.
+ * Precisa ser chamado DEPOIS do microfone estar ligado — o LiveKit exige que o AudioContext
+ * da sala já esteja pronto antes de aceitar um processor, o que não é garantido se o processor
+ * for passado junto na hora de criar a faixa.
+ */
+export async function applyNoiseFilter(track: import('livekit-client').LocalAudioTrack | undefined) {
+    if (!track) return;
+    const noiseSuppression = getNoiseSuppressionPreference();
+
+    if (!noiseSuppression) {
+        if (track.getProcessor()) {
+            await track.stopProcessor().catch(() => { });
+        }
+        return;
+    }
+
+    try {
+        const { DenoiseTrackProcessor } = await import('@cc-livekit/denoise-plugin');
+        if (!DenoiseTrackProcessor.isSupported()) return;
+        if (track.getProcessor()?.name === 'denoise-filter') return;
+        await track.setProcessor(new DenoiseTrackProcessor());
+    } catch (err) {
+        console.error('Não foi possível aplicar o filtro de ruído por IA', err);
+    }
 }
 
 type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop';
