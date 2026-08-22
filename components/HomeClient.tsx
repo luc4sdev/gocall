@@ -69,7 +69,7 @@ export function HomeClient({ username }: { username: string }) {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-[#16171A] items-center justify-center flex-col text-gray-300 text-center px-4">
+      <div className="flex h-dvh bg-[#16171A] items-center justify-center flex-col text-gray-300 text-center px-4">
         <p className="text-[#F2555A] font-semibold mb-2">Não foi possível conectar</p>
         <p className="text-sm text-[#8B8D93]">{error}</p>
       </div>
@@ -78,7 +78,7 @@ export function HomeClient({ username }: { username: string }) {
 
   if (!token || !server) {
     return (
-      <div className="flex h-screen bg-[#16171A] items-center justify-center flex-col text-gray-300">
+      <div className="flex h-dvh bg-[#16171A] items-center justify-center flex-col text-gray-300">
         <Loader2 size={40} className="animate-spin text-[#FF6B4A] mb-4" />
         <p>Conectando ao GoCall...</p>
       </div>

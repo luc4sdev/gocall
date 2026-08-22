@@ -84,7 +84,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
     const micMuted = isInRoom ? !isMicrophoneEnabled : false;
 
     return (
-        <div className="flex h-screen bg-[#0F1012] text-[#EDEBE7] overflow-hidden font-sans antialiased">
+        <div className="flex h-dvh bg-[#0F1012] text-[#EDEBE7] overflow-hidden font-sans antialiased">
 
             <div className="hidden lg:flex w-16 bg-[#0B0C0D] flex-col items-center py-4 gap-3 shrink-0 border-r border-white/4">
                 <div className="relative group cursor-pointer">

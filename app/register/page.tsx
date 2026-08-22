@@ -13,7 +13,7 @@ export default async function RegisterPage() {
     }
 
     return (
-        <div className="flex h-screen items-center justify-center bg-[#0F1012] px-4">
+        <div className="flex h-dvh items-center justify-center bg-[#0F1012] px-4">
             <RegisterForm />
         </div>
     );
