@@ -103,7 +103,7 @@ export function HomeClient({ username }: { username: string }) {
         {voiceJoined && <CallPresenceSounds />}
         <StartAudio
           label="Clique para ativar o áudio"
-          className="fixed! bottom-5! left-1/2! -translate-x-1/2! z-50! bg-[#FF6B4A]! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-[#FF7D5F]! transition-colors"
+          className="fixed! top-auto! bottom-5! left-1/2! w-auto! -translate-x-1/2! transform-none! z-50! bg-[#FF6B4A]! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-[#FF7D5F]! transition-colors"
         />
 
         <Layout

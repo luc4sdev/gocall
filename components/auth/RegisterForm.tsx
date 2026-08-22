@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { registerSchema, type RegisterInput } from '@/lib/validation/auth';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 export function RegisterForm() {
     const router = useRouter();
     const [serverError, setServerError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const form = useForm<RegisterInput>({
         resolver: zodResolver(registerSchema),
@@ -71,7 +73,14 @@ export function RegisterForm() {
                                 <FormItem>
                                     <FormLabel>Senha</FormLabel>
                                     <FormControl>
-                                        <Input type="password" autoComplete="new-password" {...field} />
+                                        <div className='relative'>
+                                            <Input type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...field} />
+                                            {showPassword ? (
+                                                <EyeOff className="size-4 absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(false)} />
+                                            ) : (
+                                                <Eye className="size-4 absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(true)} />
+                                            )}
+                                        </div>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -84,7 +93,14 @@ export function RegisterForm() {
                                 <FormItem>
                                     <FormLabel>Repetir senha</FormLabel>
                                     <FormControl>
-                                        <Input type="password" autoComplete="new-password" {...field} />
+                                        <div className='relative'>
+                                            <Input type={showConfirmPassword ? 'text' : 'password'} autoComplete="new-password" {...field} />
+                                            {showConfirmPassword ? (
+                                                <EyeOff className="size-4 absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowConfirmPassword(false)} />
+                                            ) : (
+                                                <Eye className="size-4 absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowConfirmPassword(true)} />
+                                            )}
+                                        </div>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -93,7 +109,7 @@ export function RegisterForm() {
 
                         {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-                        <Button type="submit" disabled={form.formState.isSubmitting} className="mt-2">
+                        <Button type="submit" disabled={form.formState.isSubmitting} className="mt-2 cursor-pointer">
                             {form.formState.isSubmitting && <Loader2 className="animate-spin" />}
                             Cadastrar
                         </Button>

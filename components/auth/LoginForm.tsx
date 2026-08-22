@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { loginSchema, type LoginInput } from '@/lib/validation/auth';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 export function LoginForm() {
     const router = useRouter();
     const [serverError, setServerError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const form = useForm<LoginInput>({
         resolver: zodResolver(loginSchema),
@@ -71,7 +72,14 @@ export function LoginForm() {
                                 <FormItem>
                                     <FormLabel>Senha</FormLabel>
                                     <FormControl>
-                                        <Input type="password" autoComplete="current-password" {...field} />
+                                        <div className='relative'>
+                                            <Input type={showPassword ? 'text' : 'password'} autoComplete="current-password" {...field} />
+                                            {showPassword ? (
+                                                <EyeOff className="size-4 absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(false)} />
+                                            ) : (
+                                                <Eye className="size-4 absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(true)} />
+                                            )}
+                                        </div>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -80,7 +88,7 @@ export function LoginForm() {
 
                         {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
-                        <Button type="submit" disabled={form.formState.isSubmitting} className="mt-2">
+                        <Button type="submit" disabled={form.formState.isSubmitting} className="mt-2 cursor-pointer">
                             {form.formState.isSubmitting && <Loader2 className="animate-spin" />}
                             Entrar
                         </Button>
