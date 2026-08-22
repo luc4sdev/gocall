@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff } from 'lucide-react';
+import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ScreenShare } from 'lucide-react';
 import { Participant } from 'livekit-client';
 import { useLocalParticipant } from '@livekit/components-react';
 import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
@@ -8,6 +8,15 @@ import { SettingsModal } from './SettingsModal';
 import { MembersSidebar } from './MembersSidebar';
 import { useParticipantAudio } from '@/components/call/ParticipantAudioContext';
 import { ParticipantVolumePanel } from '@/components/call/ParticipantVolumePanel';
+
+function LiveBadge() {
+    return (
+        <span className="flex items-center gap-1 shrink-0 text-[9px] font-bold uppercase tracking-wide text-[#F2555A] bg-[#F2555A]/10 px-1.5 py-0.5 rounded">
+            <ScreenShare size={10} />
+            Ao vivo
+        </span>
+    );
+}
 
 interface DiscordLayoutProps {
     children: React.ReactNode;
@@ -23,7 +32,7 @@ interface DiscordLayoutProps {
 }
 
 export function Layout({ children, serverName, channels, activeChannelId, onChannelSelect, isConnected, onLeaveCall, activeParticipants = [], username, hideMembersSidebar = false }: DiscordLayoutProps) {
-    const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
+    const { isMicrophoneEnabled, isScreenShareEnabled, localParticipant } = useLocalParticipant();
     const { isDeafened, toggleDeafen: toggleDeafenState, isMuted } = useParticipantAudio();
     const [showSettings, setShowSettings] = useState(false);
     const [openVolumeIdentity, setOpenVolumeIdentity] = useState<string | null>(null);
@@ -151,9 +160,12 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                                                 </div>
                                             )}
                                         </div>
-                                        <span className="text-[13px] text-[#B4B6BB] truncate">
-                                            {username || localParticipant.identity} (você)
-                                        </span>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="text-[13px] text-[#B4B6BB] truncate">
+                                                {username || localParticipant.identity} (você)
+                                            </span>
+                                            {isScreenShareEnabled && <LiveBadge />}
+                                        </div>
                                     </div>
                                     <button
                                         onClick={handleLeaveCall}
@@ -189,6 +201,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                                             <span className="text-[13px] text-[#B4B6BB] truncate flex-1 min-w-0">
                                                 {p.name || p.identity}
                                             </span>
+                                            {p.isScreenShareEnabled && <LiveBadge />}
                                             {muted ? (
                                                 <VolumeX size={14} className="text-[#F2555A] shrink-0" />
                                             ) : (
