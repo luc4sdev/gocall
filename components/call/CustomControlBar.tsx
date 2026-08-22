@@ -1,5 +1,5 @@
 import { useLocalParticipant } from '@livekit/components-react';
-import { VideoPresets } from 'livekit-client';
+import { ScreenSharePresets, VideoPreset } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Monitor } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
@@ -12,9 +12,30 @@ import {
 } from '@/components/ui/dialog';
 
 const RESOLUTIONS = [
-    { label: '720p', description: 'Boa qualidade, menor consumo de rede', preset: VideoPresets.h720 },
-    { label: '1080p', description: 'Recomendado para a maioria das telas', preset: VideoPresets.h1080 },
-    { label: '1440p', description: 'Alta definição, exige mais banda', preset: VideoPresets.h1440 },
+    {
+        label: '720p',
+        description: 'Boa qualidade, menor consumo de rede',
+        preset: ScreenSharePresets.h720fps30,
+        contentHint: 'detail',
+    },
+    {
+        label: '1080p',
+        description: 'Recomendado para a maioria das telas',
+        preset: ScreenSharePresets.h1080fps30,
+        contentHint: 'detail',
+    },
+    {
+        label: '1080p 60fps',
+        description: 'Mais fluido — ideal para vídeos e jogos',
+        preset: new VideoPreset(1920, 1080, 8_000_000, 60, 'high'),
+        contentHint: 'motion',
+    },
+    {
+        label: '1440p',
+        description: 'Alta definição, exige mais banda',
+        preset: new VideoPreset(2560, 1440, 8_000_000, 30, 'high'),
+        contentHint: 'detail',
+    },
 ] as const;
 
 export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
@@ -32,13 +53,13 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
         }
     }, [isScreenShareEnabled]);
 
-    const startScreenShare = async (resolution: typeof RESOLUTIONS[number]['preset']) => {
+    const startScreenShare = async (option: typeof RESOLUTIONS[number]) => {
         setShowShareDialog(false);
         try {
             await localParticipant.setScreenShareEnabled(true, {
                 audio: true,
-                resolution: resolution.resolution,
-                contentHint: 'detail',
+                resolution: option.preset.resolution,
+                contentHint: option.contentHint,
             });
         } catch (err) {
             console.error('Compartilhamento cancelado ou falhou', err);
@@ -111,7 +132,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                         {RESOLUTIONS.map((r) => (
                             <button
                                 key={r.label}
-                                onClick={() => startScreenShare(r.preset)}
+                                onClick={() => startScreenShare(r)}
                                 className="group w-full flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-[#1F2023] hover:bg-[#26282c] hover:border-[#FF6B4A]/40 px-4 py-3 text-left transition-colors"
                             >
                                 <div className="flex flex-col">
