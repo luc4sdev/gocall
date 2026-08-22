@@ -29,7 +29,7 @@ export async function GET(request: Request) {
             name: username,
         });
 
-        at.addGrant({ roomJoin: true, room: room, canPublish: true, canSubscribe: true });
+        at.addGrant({ roomJoin: true, room: room, canPublish: true, canSubscribe: true, canUpdateOwnMetadata: true });
 
         const token = await at.toJwt();
         return NextResponse.json({ token });

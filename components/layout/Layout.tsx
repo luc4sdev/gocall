@@ -1,134 +1,238 @@
-import React, { useState } from 'react';
-import { Hash, Volume2, Settings, Headphones, Mic, MicOff } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Hash, Volume2, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff } from 'lucide-react';
+import { Participant, RemoteAudioTrack, RoomEvent, Track } from 'livekit-client';
+import { useLocalParticipant, useRoomContext } from '@livekit/components-react';
+import { playDiscordSound } from '@/lib/utils';
 
 interface DiscordLayoutProps {
     children: React.ReactNode;
     activeChannelId: string;
     onChannelSelect: (channelId: string) => void;
     isConnected: boolean;
-    activeParticipants?: any[];
+    onLeaveCall: () => void;
+    activeParticipants?: Participant[];
+    username: string;
 }
 
-export function Layout({ children, activeChannelId, onChannelSelect, isConnected, activeParticipants = [] }: DiscordLayoutProps) {
-    const [isMicMuted, setIsMicMuted] = useState(false);
+export function Layout({ children, activeChannelId, onChannelSelect, isConnected, onLeaveCall, activeParticipants = [], username }: DiscordLayoutProps) {
+    const room = useRoomContext();
+    const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
     const [isDeafened, setIsDeafened] = useState(false);
-    return (
-        <div className="flex h-screen bg-[#313338] text-gray-100 overflow-hidden font-sans">
 
-            <div className="w-18 bg-[#1E1F22] flex flex-col items-center py-3 gap-2 shrink-0 border-r border-[#1e1f22] z-20">
-                <div className="w-12 h-12 bg-purple-600 rounded-[16px] flex items-center justify-center cursor-pointer transition-all hover:rounded-[12px] shadow-lg">
-                    <span className="font-bold text-white text-lg">GO</span>
+    const callParticipants = activeParticipants.filter(
+        (p) => p.identity !== localParticipant.identity && p.attributes?.inCall === 'true'
+    );
+
+    const handleLeaveCall = async () => {
+        await localParticipant.setMicrophoneEnabled(false);
+        await localParticipant.setCameraEnabled(false);
+        await localParticipant.setScreenShareEnabled(false);
+        await localParticipant.setAttributes({ inCall: 'false' });
+        playDiscordSound('leave');
+        onLeaveCall();
+    };
+
+    const isInRoom = isConnected;
+
+    const applyDeafenState = useCallback((deafened: boolean) => {
+        room.remoteParticipants.forEach((participant) => {
+            participant.audioTrackPublications.forEach((pub) => {
+                if (pub.audioTrack instanceof RemoteAudioTrack) {
+                    pub.audioTrack.setVolume(deafened ? 0 : 1);
+                }
+            });
+        });
+    }, [room]);
+
+    useEffect(() => {
+        if (!isInRoom) return;
+        const handleSubscribed = (track: Track) => {
+            if (track instanceof RemoteAudioTrack && isDeafened) {
+                track.setVolume(0);
+            }
+        };
+        room.on(RoomEvent.TrackSubscribed, handleSubscribed);
+        return () => {
+            room.off(RoomEvent.TrackSubscribed, handleSubscribed);
+        };
+    }, [room, isInRoom, isDeafened]);
+
+    const toggleMic = () => {
+        if (!isInRoom) return;
+        const next = !isMicrophoneEnabled;
+        playDiscordSound(next ? 'unmute' : 'mute');
+        localParticipant.setMicrophoneEnabled(next).catch(console.error);
+    };
+
+    const toggleDeafen = () => {
+        if (!isInRoom) return;
+        const next = !isDeafened;
+        setIsDeafened(next);
+        applyDeafenState(next);
+        playDiscordSound(next ? 'deafen' : 'undeafen');
+        if (next && isMicrophoneEnabled) {
+            localParticipant.setMicrophoneEnabled(false).catch(console.error);
+        }
+    };
+
+    const micMuted = isInRoom ? !isMicrophoneEnabled : false;
+
+    return (
+        <div className="flex h-screen bg-[#0F1012] text-[#EDEBE7] overflow-hidden font-sans antialiased">
+
+            <div className="w-16 bg-[#0B0C0D] flex flex-col items-center py-4 gap-3 shrink-0 border-r border-white/4">
+                <div className="relative group cursor-pointer">
+                    <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#FF6B4A] rounded-full" />
+                    <div className="w-11 h-11 rounded-2xl bg-[#1F2023] flex items-center justify-center transition-colors group-hover:bg-[#26282c]">
+                        <span className="font-display font-semibold text-[#EDEBE7] text-[13px] tracking-wide">GO</span>
+                    </div>
                 </div>
-                <div className="w-8 h-0.5 bg-[#313338] rounded-full my-1" />
             </div>
 
-            <div className="w-60 bg-[#2B2D31] flex flex-col shrink-0 z-10">
-                <div className="h-12 px-4 flex items-center shadow-sm font-bold text-[15px] border-b border-[#1f2023]/30">
-                    Servidor Oficial
+            <div className="w-64 bg-[#16171A] flex flex-col shrink-0">
+                <div className="h-14 px-4 flex items-center shrink-0 border-b border-white/4">
+                    <span className="font-display font-semibold text-[15px] tracking-tight">Servidor Oficial</span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2">
-                    <div className="mt-4 mb-1 px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Canais de Texto
+                <div className="flex-1 overflow-y-auto px-2 py-4">
+                    <div className="mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
+                        Texto
                     </div>
                     <button
-                        onClick={() => onChannelSelect('geral-texto')}
-                        className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md mb-0.5 text-base transition-colors
-              ${activeChannelId === 'geral-texto' ? 'bg-[#404249] text-white' : 'text-gray-400 hover:bg-[#35373C] hover:text-gray-300'}`}
+                        onClick={() => onChannelSelect('general')}
+                        className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 mb-0.5 text-[14px] transition-colors rounded-lg"
                     >
-                        <Hash size={20} className="text-gray-500 shrink-0" />
-                        <span className="truncate">geral</span>
+                        {activeChannelId === 'general' && (
+                            <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
+                        )}
+                        <Hash
+                            size={17}
+                            className={activeChannelId === 'general' ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
+                        />
+                        <span className={activeChannelId === 'general' ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
+                            geral
+                        </span>
                     </button>
 
-                    <div className="mt-4 mb-1 px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Canais de Voz
+                    <div className="mt-5 mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
+                        Voz
                     </div>
                     <button
                         onClick={() => onChannelSelect('geral-voz')}
-                        className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-base transition-colors
-              ${activeChannelId === 'geral-voz' ? 'bg-[#404249] text-white' : 'text-gray-400 hover:bg-[#35373C] hover:text-gray-300'}`}
+                        className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
                     >
-                        <Volume2 size={20} className="text-gray-500 shrink-0" />
-                        <span className="truncate">Geral</span>
+                        {activeChannelId === 'geral-voz' && (
+                            <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
+                        )}
+                        <Volume2
+                            size={17}
+                            className={activeChannelId === 'geral-voz' ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
+                        />
+                        <span className={activeChannelId === 'geral-voz' ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
+                            Geral
+                        </span>
                     </button>
 
-                    {isConnected && activeChannelId === 'geral-voz' && (
-                        <div className="ml-7 mt-1 flex flex-col gap-1">
-                            {activeParticipants.map((p) => (
-                                <div key={p.identity} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#35373c] cursor-pointer group">
-                                    <div className="relative">
-                                        <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs overflow-hidden shrink-0">
-                                            <p>{p.name?.[0] || p.identity?.[0]}</p>
+                    {(isConnected || callParticipants.length > 0) && (
+                        <div className="ml-3 mt-1 flex flex-col gap-0.5">
+                            {isConnected && (
+                                <div className="group flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="relative shrink-0">
+                                            <div
+                                                className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${localParticipant.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
+                                                    }`}
+                                            >
+                                                {(username || localParticipant.identity)?.[0]?.toUpperCase()}
+                                            </div>
+                                            {micMuted && (
+                                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
+                                                    <MicOff size={9} className="text-[#8B8D93]" />
+                                                </div>
+                                            )}
                                         </div>
-
-                                        {p.isMicrophoneEnabled ? (
-                                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border border-[#2B2D31]" />
-                                        ) : (
-                                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#2B2D31] rounded-full flex items-center justify-center">
-                                                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                                        <span className="text-[13px] text-[#B4B6BB] truncate">
+                                            {username || localParticipant.identity} (você)
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={handleLeaveCall}
+                                        className="p-1.5 rounded-lg text-[#63656B] hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all shrink-0"
+                                        title="Sair da chamada"
+                                    >
+                                        <PhoneOff size={14} />
+                                    </button>
+                                </div>
+                            )}
+                            {callParticipants.map((p) => (
+                                <div key={p.identity} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer">
+                                    <div className="relative shrink-0">
+                                        <div
+                                            className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${p.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
+                                                }`}
+                                        >
+                                            {p.name?.[0]?.toUpperCase() || p.identity?.[0]?.toUpperCase()}
+                                        </div>
+                                        {!p.isMicrophoneEnabled && (
+                                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
+                                                <MicOff size={9} className="text-[#8B8D93]" />
                                             </div>
                                         )}
                                     </div>
-                                    <span className="text-sm text-gray-300 group-hover:text-white truncate">
+                                    <span className="text-[13px] text-[#B4B6BB] truncate">
                                         {p.name || p.identity}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     )}
-
                 </div>
 
-                <div className="h-13 bg-[#232428] px-2 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-2 p-1 rounded-md hover:bg-[#3c3d42] cursor-pointer flex-1 min-w-0">
-                        <div className="relative w-8 h-8 rounded-full bg-gray-600 overflow-hidden shrink-0">
-                            <p>L</p>
-                            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#232428]" />
+                <div className="h-16 px-3 flex items-center justify-between shrink-0 border-t border-white/4">
+                    <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/3 cursor-pointer flex-1 min-w-0">
+                        <div className="relative w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium overflow-hidden shrink-0">
+                            {(username || '?')[0]?.toUpperCase()}
+                            <div className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-[#16171A]" />
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-bold truncate">Lucas</span>
-                            <span className="text-xs text-gray-400 truncate">Online</span>
+                            <span className="text-[13px] font-medium truncate">{username || 'Conectando...'}</span>
+                            <span className="text-[11px] text-[#63656B] truncate">
+                                {isInRoom ? 'Em chamada' : 'Online'}
+                            </span>
                         </div>
                     </div>
 
-                    <div className="flex items-center text-gray-400">
-                        {/* Botão de Microfone Local */}
+                    <div className="flex items-center gap-0.5">
                         <button
-                            onClick={() => setIsMicMuted(!isMicMuted)} // Adicione o [isMicMuted, setIsMicMuted] = useState(false) no início do componente
-                            className={`p-1.5 rounded-md transition-colors ${isMicMuted
-                                ? 'text-red-400 hover:text-red-500'
-                                : 'hover:bg-[#3c3d42] hover:text-gray-200'
+                            onClick={toggleMic}
+                            disabled={!isInRoom}
+                            className={`p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${micMuted ? 'text-[#F2555A] bg-[#F2555A]/10 hover:bg-[#F2555A]/15' : 'text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7]'
                                 }`}
-                            title={isMicMuted ? "Desmutar" : "Mutar"}
+                            title={micMuted ? 'Desmutar' : 'Mutar'}
                         >
-                            {isMicMuted ? <MicOff size={18} /> : <Mic size={18} />}
+                            {micMuted ? <MicOff size={16} /> : <Mic size={16} />}
                         </button>
 
-                        {/* Botão de Fone Local */}
                         <button
-                            onClick={() => setIsDeafened(!isDeafened)} // Adicione o [isDeafened, setIsDeafened] = useState(false) no início do componente
-                            className={`p-1.5 rounded-md transition-colors relative ${isDeafened
-                                ? 'text-red-400 hover:text-red-500'
-                                : 'hover:bg-[#3c3d42] hover:text-gray-200'
+                            onClick={toggleDeafen}
+                            disabled={!isInRoom}
+                            className={`p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${isDeafened ? 'text-[#F2555A] bg-[#F2555A]/10 hover:bg-[#F2555A]/15' : 'text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7]'
                                 }`}
-                            title={isDeafened ? "Desensurdecer" : "Ensurdecer"}
+                            title={isDeafened ? 'Desensurdecer' : 'Ensurdecer'}
                         >
-                            <Headphones size={18} />
-                            {/* O risco cruzado simulando o mute do fone */}
-                            {isDeafened && <div className="absolute w-5 h-0.5 bg-red-400 rotate-45 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border border-[#232428]" />}
+                            {isDeafened ? <HeadphoneOff size={16} /> : <Headphones size={16} />}
                         </button>
 
-                        <button className="p-1.5 hover:bg-[#3c3d42] rounded-md hover:text-gray-200 transition-colors" title="Configurações">
-                            <Settings size={18} />
+                        <button className="p-2 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors" title="Configurações">
+                            <Settings size={16} />
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col min-w-0 bg-[#313338]">
+            <div className="flex-1 flex flex-col min-w-0 bg-[#0F1012]">
                 {children}
             </div>
-
         </div>
     );
 }
