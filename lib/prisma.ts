@@ -5,7 +5,21 @@ declare global {
     var prismaGlobal: PrismaClient | undefined;
 }
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+function resolveConnectionString(databaseUrl?: string) {
+    if (!databaseUrl) return databaseUrl;
+    try {
+        const url = new URL(databaseUrl);
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return databaseUrl;
+        url.searchParams.set('sslmode', 'no-verify');
+        return url.toString();
+    } catch {
+        return databaseUrl;
+    }
+}
+
+const adapter = new PrismaPg({
+    connectionString: resolveConnectionString(process.env.DATABASE_URL),
+});
 
 export const prisma = globalThis.prismaGlobal ?? new PrismaClient({ adapter });
 
