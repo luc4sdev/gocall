@@ -42,7 +42,7 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
         if (isMicrophoneEnabled) {
             try {
                 await localParticipant.setMicrophoneEnabled(false);
-                await localParticipant.setMicrophoneEnabled(true, getAudioCaptureOptions());
+                await localParticipant.setMicrophoneEnabled(true, await getAudioCaptureOptions());
             } catch (err) {
                 console.error('Não foi possível aplicar a supressão de ruído', err);
             }

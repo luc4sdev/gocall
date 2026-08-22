@@ -78,12 +78,11 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
     return (
         <div className="min-h-20 pb-[env(safe-area-inset-bottom)] bg-[#16171A] border-t border-white/4 flex items-center justify-center gap-2 shrink-0">
             <button
-                onClick={() => {
+                onClick={async () => {
                     const next = !isMicrophoneEnabled;
                     playDiscordSound(next ? 'unmute' : 'mute');
-                    localParticipant
-                        .setMicrophoneEnabled(next, next ? getAudioCaptureOptions() : undefined)
-                        .catch(console.error);
+                    const options = next ? await getAudioCaptureOptions() : undefined;
+                    localParticipant.setMicrophoneEnabled(next, options).catch(console.error);
                 }}
                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isMicrophoneEnabled
                     ? 'bg-[#1F2023] text-[#EDEBE7] hover:bg-[#26282c]'

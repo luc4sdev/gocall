@@ -12,7 +12,7 @@ export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
     const handleJoin = async () => {
         setIsConnecting(true);
         try {
-            await localParticipant.setMicrophoneEnabled(true, getAudioCaptureOptions());
+            await localParticipant.setMicrophoneEnabled(true, await getAudioCaptureOptions());
             await localParticipant.setAttributes({ inCall: 'true' });
             playDiscordSound('join');
             onJoin();

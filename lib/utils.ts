@@ -24,13 +24,29 @@ export function setNoiseSuppressionPreference(value: boolean) {
     window.localStorage.setItem(NOISE_SUPPRESSION_KEY, String(value));
 }
 
-export function getAudioCaptureOptions() {
+export async function getAudioCaptureOptions() {
     const noiseSuppression = getNoiseSuppressionPreference();
+
+    let processor: import('livekit-client').AudioCaptureOptions['processor'];
+    if (noiseSuppression && typeof window !== 'undefined') {
+        try {
+            const { DenoiseTrackProcessor } = await import('@cc-livekit/denoise-plugin');
+            if (DenoiseTrackProcessor.isSupported()) {
+                processor = new DenoiseTrackProcessor();
+            }
+        } catch {
+            // Falha ao carregar o filtro de ruído por IA — segue só com a supressão nativa do navegador.
+        }
+    }
+
     return {
-        noiseSuppression,
+        // Com o processador de IA (RNNoise) ativo, ele substitui a supressão nativa do navegador
+        // em vez de somar a ela (evita os dois filtros brigando/distorcendo o áudio).
+        noiseSuppression: noiseSuppression && !processor,
         echoCancellation: true,
         autoGainControl: true,
-        voiceIsolation: noiseSuppression,
+        voiceIsolation: noiseSuppression && !processor,
+        processor,
     };
 }
 

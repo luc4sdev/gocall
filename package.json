@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@cc-livekit/denoise-plugin": "^1.0.10",
     "@hookform/resolvers": "^5.9.1",
     "@livekit/components-react": "^2.9.24",
     "@livekit/components-styles": "^1.2.0",

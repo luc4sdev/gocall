@@ -62,13 +62,12 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
 
     const isInRoom = isConnected;
 
-    const toggleMic = () => {
+    const toggleMic = async () => {
         if (!isInRoom) return;
         const next = !isMicrophoneEnabled;
         playDiscordSound(next ? 'unmute' : 'mute');
-        localParticipant
-            .setMicrophoneEnabled(next, next ? getAudioCaptureOptions() : undefined)
-            .catch(console.error);
+        const options = next ? await getAudioCaptureOptions() : undefined;
+        localParticipant.setMicrophoneEnabled(next, options).catch(console.error);
     };
 
     const toggleDeafen = () => {
