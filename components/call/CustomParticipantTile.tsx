@@ -13,9 +13,7 @@ import {
     type TrackReferenceOrPlaceholder,
 } from '@livekit/components-react';
 import { ScreenShare } from 'lucide-react';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ParticipantVolumeControl } from './ParticipantVolumeControl';
 
 function ParticipantAvatar({ name }: { name?: string }) {
     const initial = (name || '?').trim()[0]?.toUpperCase() || '?';
@@ -33,7 +31,6 @@ interface CustomParticipantTileProps {
 
 export function CustomParticipantTile({ trackRef, className }: CustomParticipantTileProps) {
     const trackReference = useEnsureTrackRef(trackRef);
-    const [volumeOpen, setVolumeOpen] = useState(false);
 
     const isVideo =
         isTrackReference(trackReference) &&
@@ -41,15 +38,8 @@ export function CustomParticipantTile({ trackRef, className }: CustomParticipant
             trackReference.source === Track.Source.Camera ||
             trackReference.source === Track.Source.ScreenShare);
 
-    const showVolumeControl =
-        !trackReference.participant.isLocal && trackReference.source === Track.Source.Camera;
-
     return (
-        <ParticipantTile
-            trackRef={trackReference}
-            className={cn('w-full h-full', showVolumeControl && 'cursor-pointer', className)}
-            onParticipantClick={showVolumeControl ? () => setVolumeOpen((v) => !v) : undefined}
-        >
+        <ParticipantTile trackRef={trackReference} className={cn('w-full h-full', className)}>
             {isVideo ? (
                 <VideoTrack trackRef={trackReference} />
             ) : (
@@ -77,14 +67,6 @@ export function CustomParticipantTile({ trackRef, className }: CustomParticipant
                 </div>
                 <ConnectionQualityIndicator className="lk-participant-metadata-item" />
             </div>
-            {showVolumeControl && (
-                <ParticipantVolumeControl
-                    identity={trackReference.participant.identity}
-                    name={trackReference.participant.name || trackReference.participant.identity}
-                    open={volumeOpen}
-                    onOpenChange={setVolumeOpen}
-                />
-            )}
         </ParticipantTile>
     );
 }

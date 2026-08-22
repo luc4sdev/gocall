@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Hash, Loader2, Volume2 } from 'lucide-react';
 import { VoiceRoom } from '@/components/call/VoiceRoom';
 
-import { Participant } from 'livekit-client';
+import { Participant, type RoomOptions } from 'livekit-client';
 import { LiveKitRoom, RoomAudioRenderer, StartAudio, useParticipants } from '@livekit/components-react';
 import { ChatChannel } from '@/components/chat/ChatChanel';
 import { VoiceChannelGate } from '@/components/call/VoiceChannelGate';
@@ -33,6 +33,8 @@ export function HomeClient({ username }: { username: string }) {
   };
 
   const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || "";
+
+  const roomOptions = useMemo<RoomOptions>(() => ({ dynacast: true }), []);
 
   useEffect(() => {
     const init = async () => {
@@ -90,6 +92,7 @@ export function HomeClient({ username }: { username: string }) {
       audio={false}
       token={token}
       serverUrl={liveKitUrl}
+      options={roomOptions}
       data-lk-theme="default"
       className="flex-1 flex flex-col"
     >
