@@ -229,7 +229,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                     )}
                 </div>
 
-                <div className="h-16 px-3 flex items-center justify-between shrink-0 border-t border-white/4">
+                <div className="min-h-16 px-3 pb-[env(safe-area-inset-bottom)] flex items-center justify-between shrink-0 border-t border-white/4">
                     <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/3 cursor-pointer flex-1 min-w-0">
                         <div className="relative w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium shrink-0">
                             {(username || '?')[0]?.toUpperCase()}

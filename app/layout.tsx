@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 import { Inter } from "next/font/google";
@@ -11,6 +11,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "GoCall | Onde as conversas acontecem",
   description: "Plataforma de voz e vídeo em tempo real",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

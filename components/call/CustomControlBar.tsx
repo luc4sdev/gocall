@@ -76,7 +76,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
         onLeave();
     };
     return (
-        <div className="h-20 bg-[#16171A] border-t border-white/4 flex items-center justify-center gap-2 shrink-0">
+        <div className="min-h-20 pb-[env(safe-area-inset-bottom)] bg-[#16171A] border-t border-white/4 flex items-center justify-center gap-2 shrink-0">
             <button
                 onClick={() => {
                     const next = !isMicrophoneEnabled;
