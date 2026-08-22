@@ -165,7 +165,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                                             </div>
                                             {micMuted && (
                                                 <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
-                                                    <MicOff size={9} className="text-[#8B8D93]" />
+                                                    <MicOff size={9} className="text-red-500" />
                                                 </div>
                                             )}
                                         </div>
