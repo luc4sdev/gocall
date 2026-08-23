@@ -100,7 +100,7 @@ export function ChatChannel({ channelId }: ChatChannelProps) {
     };
 
     return (
-        <div className="flex-1 flex flex-col bg-[#313338] px-2 sm:px-4 pt-2 sm:pt-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] min-h-0">
+        <div className="flex-1 flex flex-col bg-[#0B0C0D] px-2 sm:px-4 pt-2 sm:pt-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] min-h-0">
 
             <div className="flex-1 overflow-y-auto flex flex-col justify-end mb-4 pr-1 sm:pr-2 space-y-3 sm:space-y-4">
                 {isLoadingHistory ? (
