@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "GoCall | Onde as conversas acontecem",
+  title: "GoCall | Converse com amigos",
   description: "Plataforma de voz e vídeo em tempo real",
 };
 

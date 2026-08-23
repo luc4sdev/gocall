@@ -54,13 +54,21 @@ export function ChatChannel({ channelId }: ChatChannelProps) {
             content: m.content,
             timestamp: new Date(m.createdAt).getTime(),
         }));
-        const fromLive: DisplayMessage[] = chatMessages.map((m) => ({
-            key: m.id,
-            authorId: m.from?.identity ?? 'unknown',
-            authorName: m.from?.name || m.from?.identity || '?',
-            content: m.message,
-            timestamp: m.timestamp,
-        }));
+
+        const fromLive: DisplayMessage[] = chatMessages
+            .map((m) => ({
+                key: m.id,
+                authorId: m.from?.identity ?? 'unknown',
+                authorName: m.from?.name || m.from?.identity || '?',
+                content: m.message,
+                timestamp: m.timestamp,
+            }))
+            .filter((live) => !fromHistory.some((h) =>
+                h.authorId === live.authorId &&
+                h.content === live.content &&
+                Math.abs(h.timestamp - live.timestamp) < 10_000
+            ));
+
         return [...fromHistory, ...fromLive];
     }, [history, chatMessages]);
 

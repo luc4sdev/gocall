@@ -14,7 +14,7 @@ async function requireSession() {
 }
 
 export async function GET(
-    request: Request,
+    _request: Request,
     { params }: { params: Promise<{ channelId: string }> }
 ) {
     try {

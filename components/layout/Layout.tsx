@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ScreenShare, ArrowLeft, Users, X } from 'lucide-react';
+import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ArrowLeft, Users, X, Radio } from 'lucide-react';
 import { Participant } from 'livekit-client';
 import { useLocalParticipant } from '@livekit/components-react';
 import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
 import type { ChannelDTO } from '@/lib/types';
 import { SettingsModal } from './SettingsModal';
 import { MembersSidebar } from './MembersSidebar';
+import { Logo } from '@/components/Logo';
 import { useParticipantAudio } from '@/components/call/ParticipantAudioContext';
 import { ParticipantVolumePanel } from '@/components/call/ParticipantVolumePanel';
 
 function LiveBadge() {
     return (
         <span className="flex items-center gap-1 shrink-0 text-[9px] font-bold uppercase tracking-wide text-[#F2555A] bg-[#F2555A]/10 px-1.5 py-0.5 rounded">
-            <ScreenShare size={10} />
+            <Radio size={10} />
             Ao vivo
         </span>
     );
@@ -46,7 +47,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
 
     const callParticipants = activeParticipants.filter(
         (p) => p.identity !== localParticipant.identity && p.attributes?.inCall === 'true'
-    );
+    ).sort((a, b) => Number(b.isScreenShareEnabled) - Number(a.isScreenShareEnabled));
 
     const textChannels = channels.filter((c) => c.type === 'TEXT');
     const voiceChannels = channels.filter((c) => c.type === 'VOICE');
@@ -89,7 +90,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                 <div className="relative group cursor-pointer">
                     <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#FF6B4A] rounded-full" />
                     <div className="w-11 h-11 rounded-2xl bg-[#1F2023] flex items-center justify-center transition-colors group-hover:bg-[#26282c]">
-                        <span className="font-display font-semibold text-[#EDEBE7] text-[13px] tracking-wide">GO</span>
+                        <Logo className="w-6 h-6" />
                     </div>
                 </div>
             </div>

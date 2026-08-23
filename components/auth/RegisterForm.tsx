@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Logo } from '@/components/Logo';
 
 export function RegisterForm() {
     const router = useRouter();
@@ -45,7 +46,11 @@ export function RegisterForm() {
     };
 
     return (
-        <Card className="w-full max-w-sm">
+        <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+            <div className="w-14 h-14 rounded-2xl bg-[#1F2023] flex items-center justify-center shrink-0">
+                <Logo className="w-8 h-8" />
+            </div>
+            <Card className="w-full">
             <CardHeader>
                 <CardTitle>Criar conta no GoCall</CardTitle>
                 <CardDescription>Escolha um usuário e uma senha.</CardDescription>
@@ -123,6 +128,7 @@ export function RegisterForm() {
                     </Link>
                 </p>
             </CardContent>
-        </Card>
+            </Card>
+        </div>
     );
 }
