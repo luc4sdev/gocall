@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Hash, Loader2, Volume2 } from 'lucide-react';
+import { Hash, Volume2 } from 'lucide-react';
 import { VoiceRoom } from '@/components/call/VoiceRoom';
 
 import { Participant, type RoomOptions } from 'livekit-client';
@@ -12,6 +12,7 @@ import { VoiceChannelGate } from '@/components/call/VoiceChannelGate';
 import { ParticipantAudioProvider } from '@/components/call/ParticipantAudioContext';
 import { CallPresenceSounds } from '@/components/call/CallPresenceSounds';
 import type { ServerDTO } from '@/lib/types';
+import { Logo } from './Logo';
 
 function ParticipantsSpy({ onChange }: { onChange: (p: Participant[]) => void }) {
   const participants = useParticipants();
@@ -79,7 +80,7 @@ export function HomeClient({ username }: { username: string }) {
   if (!token || !server) {
     return (
       <div className="flex h-dvh bg-[#16171A] items-center justify-center flex-col text-gray-300">
-        <Loader2 size={40} className="animate-spin text-[#FF6B4A] mb-4" />
+        <Logo className="w-10 h-10 animate-ping text-[#FF6B4A] mb-4" />
         <p>Conectando ao GoCall...</p>
       </div>
     );
