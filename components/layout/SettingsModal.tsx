@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -109,6 +109,14 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
         setAudioOutputDevicePreference(deviceId);
     };
 
+    const accentDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
+        };
+    }, []);
+
     const applyAccentColor = (hex: string) => {
         const normalized = normalizeHexColor(hex);
         if (!normalized) {
@@ -118,7 +126,9 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
         setAccentError(false);
         setAccentColor(normalized);
         setAccentHexInput(normalized);
-        setAccentColorPreference(normalized);
+
+        if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
+        accentDebounceRef.current = setTimeout(() => setAccentColorPreference(normalized), 80);
     };
 
     const handleAccentPickerChange = (value: string) => applyAccentColor(value);
@@ -129,9 +139,10 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
         if (normalized) {
             setAccentError(false);
             setAccentColor(normalized);
-            setAccentColorPreference(normalized);
+            if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current);
+            accentDebounceRef.current = setTimeout(() => setAccentColorPreference(normalized), 80);
         } else {
-            setAccentError(true);
+            setAccentError(value.trim().length >= 7);
         }
     };
 
