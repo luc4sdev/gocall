@@ -5,7 +5,6 @@ import {
     ParticipantTile,
     ParticipantName,
     TrackMutedIndicator,
-    ConnectionQualityIndicator,
     VideoTrack,
     AudioTrack,
     isTrackReference,
@@ -65,7 +64,6 @@ export function CustomParticipantTile({ trackRef, className }: CustomParticipant
                         </>
                     )}
                 </div>
-                <ConnectionQualityIndicator className="lk-participant-metadata-item" />
             </div>
         </ParticipantTile>
     );

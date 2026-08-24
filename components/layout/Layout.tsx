@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Hash, Volume2, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ArrowLeft, Users, X, Radio, Plus, Trash2 } from 'lucide-react';
 import { Participant } from 'livekit-client';
 import type { ChannelDTO } from '@/lib/types';
@@ -14,6 +14,30 @@ function LiveBadge() {
         <span className="flex items-center gap-1 shrink-0 text-[9px] font-bold uppercase tracking-wide text-[#F2555A] bg-[#F2555A]/10 px-1.5 py-0.5 rounded">
             <Radio size={10} />
             Ao vivo
+        </span>
+    );
+}
+
+function formatCallDuration(ms: number) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
+}
+
+function CallTimer({ startedAt }: { startedAt: number }) {
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <span className="shrink-0 leading-none text-[11px] font-medium text-[#FF6B4A] tabular-nums">
+            {formatCallDuration(now - startedAt)}
         </span>
     );
 }
@@ -71,11 +95,17 @@ export function Layout({
     const voiceChannelName = channels.find((c) => c.id === voiceChannelId)?.name ?? '';
 
     const callParticipantsByChannel = new Map<string, Participant[]>();
+    const callStartedAtByChannel = new Map<string, number>();
     for (const p of activeParticipants) {
-        if (p.identity === localIdentity) continue;
         if (p.attributes?.inCall !== 'true') continue;
         const cid = p.attributes?.voiceChannelId;
         if (!cid) continue;
+
+        if (!callStartedAtByChannel.has(cid) && p.attributes?.voiceChannelStartedAt) {
+            callStartedAtByChannel.set(cid, Number(p.attributes.voiceChannelStartedAt));
+        }
+
+        if (p.identity === localIdentity) continue;
         const group = callParticipantsByChannel.get(cid);
         if (group) group.push(p);
         else callParticipantsByChannel.set(cid, [p]);
@@ -165,6 +195,7 @@ export function Layout({
                         const isMyChannel = voiceChannelId === channel.id;
                         const otherMembers = callParticipantsByChannel.get(channel.id) ?? [];
                         const showCallSection = (isMyChannel && isInRoom) || otherMembers.length > 0;
+                        const callStartedAt = callStartedAtByChannel.get(channel.id);
 
                         return (
                             <div key={channel.id} className="mb-0.5">
@@ -180,8 +211,11 @@ export function Layout({
                                             size={17}
                                             className={`shrink-0 ${activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}`}
                                         />
-                                        <span className={`truncate ${activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}`}>
-                                            {channel.name}
+                                        <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                                            <span className={`truncate ${activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}`}>
+                                                {channel.name}
+                                            </span>
+                                            {showCallSection && callStartedAt && <CallTimer startedAt={callStartedAt} />}
                                         </span>
                                     </button>
                                     {channel.canDelete && (

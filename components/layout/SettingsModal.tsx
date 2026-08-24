@@ -150,7 +150,7 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
                 }
             }}
         >
-            <DialogContent>
+            <DialogContent className="max-h-[85dvh] 2xl:max-h-[105dvh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Configurações</DialogTitle>
                     <DialogDescription>Logado como {username}</DialogDescription>

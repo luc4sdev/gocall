@@ -76,15 +76,10 @@ export function setAudioOutputDevicePreference(deviceId: string) {
     }));
 }
 
+
 export async function getAudioCaptureOptions(): Promise<AudioCaptureOptions> {
     const deviceId = getAudioInputDevicePreference();
-    let noiseSuppression = getNoiseSuppressionPreference();
-    let processor: AudioCaptureOptions['processor'];
-
-    if (getAdvancedNoiseSuppressionPreference()) {
-        processor = await createAdvancedNoiseSuppressionProcessor();
-        if (processor) noiseSuppression = false;
-    }
+    const noiseSuppression = getAdvancedNoiseSuppressionPreference() ? false : getNoiseSuppressionPreference();
 
     return {
         noiseSuppression,
@@ -92,7 +87,6 @@ export async function getAudioCaptureOptions(): Promise<AudioCaptureOptions> {
         autoGainControl: true,
         voiceIsolation: noiseSuppression,
         ...(deviceId ? { deviceId } : {}),
-        ...(processor ? { processor } : {}),
     };
 }
 
@@ -111,15 +105,9 @@ export async function createAdvancedNoiseSuppressionProcessor(): Promise<AudioCa
 
 export async function enableMicrophone(localParticipant: LocalParticipant): Promise<{ advancedSuppressionActive: boolean }> {
     const options = await getAudioCaptureOptions();
-    try {
-        await localParticipant.setMicrophoneEnabled(true, options);
-        return { advancedSuppressionActive: !!options.processor };
-    } catch (err) {
-        if (!options.processor) throw err;
-        console.error('Falha ao ativar o microfone com a supressão avançada, tentando sem ela:', err);
-        await localParticipant.setMicrophoneEnabled(true, { ...options, processor: undefined });
-        return { advancedSuppressionActive: false };
-    }
+    await localParticipant.setMicrophoneEnabled(true, options);
+    const advancedSuppressionActive = await applyAdvancedNoiseSuppressionToMicrophone(localParticipant);
+    return { advancedSuppressionActive };
 }
 
 export async function applyAdvancedNoiseSuppressionToMicrophone(localParticipant: LocalParticipant): Promise<boolean> {
@@ -134,6 +122,10 @@ export async function applyAdvancedNoiseSuppressionToMicrophone(localParticipant
     const processor = await createAdvancedNoiseSuppressionProcessor();
     if (!processor) return false;
     try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+            track.setAudioContext(new AudioContextClass());
+        }
         await track.setProcessor(processor);
         return true;
     } catch (err) {
@@ -149,22 +141,54 @@ function playTone(
     frequency: number,
     startTime: number,
     duration: number,
-    { type = 'sine', peakGain = 0.12 }: { type?: OscillatorType; peakGain?: number } = {}
+    { type = 'sine', peakGain = 0.12, filterFreq }: { type?: OscillatorType; peakGain?: number; filterFreq?: number } = {}
 ) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    let lastNode: AudioNode = osc;
 
-    osc.connect(gain);
+    if (filterFreq) {
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = filterFreq;
+        lastNode.connect(filter);
+        lastNode = filter;
+    }
+    lastNode.connect(gain);
     gain.connect(ctx.destination);
     osc.type = type;
     osc.frequency.setValueAtTime(frequency, startTime);
 
     gain.gain.setValueAtTime(0, startTime);
-    gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.015);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
     osc.start(startTime);
     osc.stop(startTime + duration + 0.02);
+}
+
+function playNoiseBurst(ctx: AudioContext, startTime: number, duration: number, peakGain = 0.15) {
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 2500;
+    const gain = ctx.createGain();
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    gain.gain.setValueAtTime(peakGain, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+    noise.start(startTime);
+    noise.stop(startTime + duration + 0.01);
 }
 
 export function playSound(type: SoundType) {
@@ -176,41 +200,42 @@ export function playSound(type: SoundType) {
 
         switch (type) {
             case 'join':
-                playTone(ctx, 523.25, now, 0.12);
-                playTone(ctx, 783.99, now + 0.09, 0.18);
+                playNoiseBurst(ctx, now, 0.02, 0.12);
+                playTone(ctx, 349.23, now, 0.05, { type: 'triangle', peakGain: 0.3 });
+                playTone(ctx, 523.25, now + 0.05, 0.18, { type: 'triangle', peakGain: 0.32 });
                 break;
             case 'leave':
-                playTone(ctx, 622.25, now, 0.1);
-                playTone(ctx, 415.3, now + 0.08, 0.2);
+                playTone(ctx, 523.25, now, 0.05, { type: 'triangle', peakGain: 0.28 });
+                playTone(ctx, 293.66, now + 0.05, 0.22, { type: 'triangle', peakGain: 0.3 });
                 break;
             case 'mute':
-                playTone(ctx, 340, now, 0.09, { type: 'triangle', peakGain: 0.1 });
+                playNoiseBurst(ctx, now, 0.015, 0.1);
+                playTone(ctx, 220, now, 0.08, { type: 'square', peakGain: 0.22, filterFreq: 700 });
                 break;
             case 'unmute':
-                playTone(ctx, 340, now, 0.06, { type: 'triangle', peakGain: 0.1 });
-                playTone(ctx, 540, now + 0.05, 0.08, { type: 'triangle', peakGain: 0.1 });
+                playTone(ctx, 220, now, 0.05, { type: 'square', peakGain: 0.2, filterFreq: 1400 });
+                playTone(ctx, 440, now + 0.05, 0.09, { type: 'square', peakGain: 0.24 });
                 break;
             case 'deafen':
-                playTone(ctx, 300, now, 0.07, { type: 'triangle', peakGain: 0.09 });
-                playTone(ctx, 190, now + 0.05, 0.14, { type: 'triangle', peakGain: 0.09 });
+                playTone(ctx, 260, now, 0.1, { type: 'sawtooth', peakGain: 0.2, filterFreq: 500 });
+                playTone(ctx, 155, now + 0.08, 0.2, { type: 'sawtooth', peakGain: 0.22, filterFreq: 380 });
                 break;
             case 'undeafen':
-                playTone(ctx, 420, now, 0.06, { type: 'triangle', peakGain: 0.09 });
-                playTone(ctx, 600, now + 0.05, 0.1, { type: 'triangle', peakGain: 0.09 });
+                playTone(ctx, 300, now, 0.06, { type: 'sawtooth', peakGain: 0.2 });
+                playTone(ctx, 500, now + 0.06, 0.13, { type: 'sawtooth', peakGain: 0.24 });
                 break;
             case 'screenshare-start':
-                playTone(ctx, 440, now, 0.08, { peakGain: 0.11 });
-                playTone(ctx, 554.37, now + 0.07, 0.08, { peakGain: 0.11 });
-                playTone(ctx, 659.25, now + 0.14, 0.16, { peakGain: 0.11 });
+                playTone(ctx, 392, now, 0.06, { type: 'triangle', peakGain: 0.24 });
+                playTone(ctx, 523.25, now + 0.06, 0.06, { type: 'triangle', peakGain: 0.26 });
+                playTone(ctx, 659.25, now + 0.12, 0.2, { type: 'triangle', peakGain: 0.3 });
                 break;
             case 'screenshare-stop':
-                playTone(ctx, 554.37, now, 0.08, { peakGain: 0.1 });
-                playTone(ctx, 415.3, now + 0.07, 0.18, { peakGain: 0.1 });
+                playTone(ctx, 659.25, now, 0.06, { type: 'triangle', peakGain: 0.24 });
+                playTone(ctx, 440, now + 0.06, 0.22, { type: 'triangle', peakGain: 0.26 });
                 break;
         }
 
-        const closeAfter = type === 'join' || type === 'leave' || type === 'screenshare-start' ? 500 : 300;
-        setTimeout(() => ctx.close().catch(() => {}), closeAfter);
+        setTimeout(() => ctx.close().catch(() => {}), 700);
     } catch {
         console.error("Áudio bloqueado pelo navegador");
     }

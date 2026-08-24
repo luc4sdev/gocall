@@ -6,6 +6,7 @@ import { GridLayout } from '@livekit/components-react';
 import { CustomParticipantTile } from './CustomParticipantTile';
 import { getScreenShareVolumeKey, useParticipantAudio } from './ParticipantAudioContext';
 import { ParticipantVolumePanel } from './ParticipantVolumePanel';
+import { Button } from '../ui/button';
 
 interface CustomVideoGridProps {
     theaterMode: boolean;
@@ -42,6 +43,36 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVide
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [volumeOpen]);
+
+    const [seenScreenShareKeys, setSeenScreenShareKeys] = useState<Set<string>>(new Set());
+    const remoteScreenShareKeys = useMemo(
+        () => new Set(
+            screenShareTracks.filter((t) => !t.participant.isLocal).map((t) => `${t.participant.identity}-${t.source}`)
+        ),
+        [screenShareTracks]
+    );
+    const newScreenShareKeys = [...remoteScreenShareKeys].filter((k) => !seenScreenShareKeys.has(k));
+    if (newScreenShareKeys.length > 0) {
+        setSeenScreenShareKeys(remoteScreenShareKeys);
+        setPausedKeys((prev) => new Set([...prev, ...newScreenShareKeys]));
+    }
+
+    useEffect(() => {
+        for (const t of screenShareTracks) {
+            const key = `${t.participant.identity}-${t.source}`;
+            if (!pausedKeys.has(key) || !isTrackReference(t)) continue;
+
+            const videoPublication = t.publication;
+            if (videoPublication instanceof RemoteTrackPublication) {
+                videoPublication.setSubscribed(false);
+            }
+            t.participant.audioTrackPublications.forEach((pub) => {
+                if (pub.source === Track.Source.ScreenShareAudio && pub instanceof RemoteTrackPublication) {
+                    pub.setSubscribed(false);
+                }
+            });
+        }
+    }, [screenShareTracks, pausedKeys]);
 
     const focusedTrack = useMemo(() => {
         if (screenShareTracks.length === 0) return undefined;
@@ -102,15 +133,15 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVide
                         <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-center px-4">
                             <EyeOff size={32} className="text-[#63656B]" />
                             <p className="text-sm text-[#8B8D93]">
-                                Você parou de assistir a transmissão de {focusedTrack.participant.name || focusedTrack.participant.identity}
+                                Transmissão de {focusedTrack.participant.name || focusedTrack.participant.identity} pausada.
                             </p>
-                            <button
+                            <Button
                                 onClick={toggleWatching}
                                 className="flex items-center gap-2 bg-[#FF6B4A] hover:bg-[#FF7D5F] text-[#0F1012] font-semibold text-sm py-2 px-4 rounded-xl transition-colors"
                             >
                                 <Eye size={16} />
-                                Voltar a assistir
-                            </button>
+                                Assistir
+                            </Button>
                         </div>
                     ) : (
                         <CustomParticipantTile trackRef={focusedTrack} className="object-contain" />
