@@ -1,12 +1,15 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useChat, useLocalParticipant } from '@livekit/components-react';
+import { useLocalParticipant } from '@livekit/components-react';
 import { Send, Loader2 } from 'lucide-react';
 import type { MessageDTO } from '@/lib/types';
+import type { ChatBridgeState } from './ChatBridge';
 
 interface ChatChannelProps {
     channelId: string;
+    chatMessages: ChatBridgeState['chatMessages'];
+    sendMessage: ChatBridgeState['send'] | null;
 }
 
 interface DisplayMessage {
@@ -17,13 +20,12 @@ interface DisplayMessage {
     timestamp: number;
 }
 
-export function ChatChannel({ channelId }: ChatChannelProps) {
+export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChannelProps) {
     const { localParticipant } = useLocalParticipant();
-    const chatOptions = useMemo(() => ({ channelTopic: channelId }), [channelId]);
-    const { send, chatMessages, isSending } = useChat(chatOptions);
     const [message, setMessage] = useState('');
     const [history, setHistory] = useState<MessageDTO[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+    const [isSending, setIsSending] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -56,6 +58,7 @@ export function ChatChannel({ channelId }: ChatChannelProps) {
         }));
 
         const fromLive: DisplayMessage[] = chatMessages
+            .filter((m) => m.attributes?.channelId === channelId)
             .map((m) => ({
                 key: m.id,
                 authorId: m.from?.identity ?? 'unknown',
@@ -70,18 +73,21 @@ export function ChatChannel({ channelId }: ChatChannelProps) {
             ));
 
         return [...fromHistory, ...fromLive];
-    }, [history, chatMessages]);
+    }, [history, chatMessages, channelId]);
 
     const handleSend = async (e: FormEvent) => {
         e.preventDefault();
         const content = message.trim();
-        if (!content) return;
+        if (!content || !sendMessage) return;
         setMessage('');
 
+        setIsSending(true);
         try {
-            await send(content);
+            await sendMessage(content, { attributes: { channelId } });
         } catch (err) {
             console.error('Erro ao enviar mensagem via LiveKit:', err);
+        } finally {
+            setIsSending(false);
         }
 
         try {

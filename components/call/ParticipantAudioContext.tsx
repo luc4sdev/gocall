@@ -5,6 +5,7 @@ import { RemoteAudioTrack, RoomEvent, Track, type RemoteParticipant, type Remote
 import { useRoomContext } from '@livekit/components-react';
 
 const DEFAULT_VOLUME = 0.5;
+const MUTED_VOLUME = 0.0001;
 const VOLUMES_STORAGE_KEY = 'gocall:participantVolumes';
 const MUTED_STORAGE_KEY = 'gocall:participantMuted';
 
@@ -58,7 +59,7 @@ export function ParticipantAudioProvider({ children }: { children: React.ReactNo
     }, [muted]);
 
     const effectiveVolume = useCallback((key: string) => {
-        if (isDeafened || muted[key]) return 0;
+        if (isDeafened || muted[key]) return MUTED_VOLUME;
         return volumes[key] ?? DEFAULT_VOLUME;
     }, [volumes, muted, isDeafened]);
 
@@ -95,7 +96,7 @@ export function ParticipantAudioProvider({ children }: { children: React.ReactNo
     const getVolume = useCallback((key: string) => volumes[key] ?? DEFAULT_VOLUME, [volumes]);
 
     const setVolume = useCallback((key: string, volume: number) => {
-        const clamped = Math.min(1, Math.max(0, volume));
+        const clamped = Math.min(1, Math.max(MUTED_VOLUME, volume));
         setVolumes((prev) => ({ ...prev, [key]: clamped }));
     }, []);
 

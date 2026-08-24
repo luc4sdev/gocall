@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
+import type { ServerDTO } from '@/lib/types';
 
 export async function GET() {
     try {
@@ -26,7 +27,19 @@ export async function GET() {
             );
         }
 
-        return NextResponse.json({ server });
+        const dto: ServerDTO = {
+            id: server.id,
+            name: server.name,
+            channels: server.channels.map((c) => ({
+                id: c.id,
+                name: c.name,
+                type: c.type,
+                roomName: c.roomName,
+                canDelete: c.createdById === session.sub,
+            })),
+        };
+
+        return NextResponse.json({ server: dto });
     } catch (error) {
         console.error('Erro ao buscar servidor:', error);
         return NextResponse.json({ error: 'Erro interno ao buscar servidor' }, { status: 500 });

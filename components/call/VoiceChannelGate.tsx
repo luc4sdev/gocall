@@ -1,27 +1,15 @@
 'use client';
 
 import { Volume2 } from 'lucide-react';
-import { useLocalParticipant } from '@livekit/components-react';
 import { useState } from 'react';
-import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
 
-export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
-    const { localParticipant } = useLocalParticipant();
+export function VoiceChannelGate({ channelName, onJoin }: { channelName: string; onJoin: () => Promise<boolean> }) {
     const [isConnecting, setIsConnecting] = useState(false);
 
     const handleJoin = async () => {
         setIsConnecting(true);
-        try {
-            await localParticipant.setMicrophoneEnabled(true, await getAudioCaptureOptions());
-            await localParticipant.setAttributes({ inCall: 'true' });
-            playDiscordSound('join');
-            onJoin();
-        } catch (err) {
-            console.error('Não foi possível ativar o microfone', err);
-            alert('Não foi possível acessar o microfone. Verifique as permissões do navegador.');
-        } finally {
-            setIsConnecting(false);
-        }
+        const success = await onJoin();
+        if (!success) setIsConnecting(false);
     };
 
     return (
@@ -33,7 +21,7 @@ export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
                         <Volume2 size={26} />
                     </div>
                 </div>
-                <h2 className="font-display font-semibold text-lg mb-1.5 text-[#EDEBE7]">Geral</h2>
+                <h2 className="font-display font-semibold text-lg mb-1.5 text-[#EDEBE7]">{channelName}</h2>
                 <p className="text-[13px] text-[#8B8D93] mb-6 leading-relaxed">
                     Entre na chamada para conversar por voz e compartilhar sua tela com o servidor.
                 </p>
@@ -42,7 +30,7 @@ export function VoiceChannelGate({ onJoin }: { onJoin: () => void }) {
                     disabled={isConnecting}
                     className="w-full bg-[#FF6B4A] hover:bg-[#FF7D5F] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed text-[#0F1012] font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors"
                 >
-                    {isConnecting ? 'Ativando microfone...' : 'Entrar no canal de voz'}
+                    {isConnecting ? 'Conectando...' : 'Entrar no canal de voz'}
                 </button>
             </div>
         </div>

@@ -13,9 +13,7 @@ export function CallPresenceSounds() {
     useEffect(() => {
         const remoteParticipants = participants.filter((p) => p.identity !== localParticipant.identity);
 
-        const currentInCall = new Set(
-            remoteParticipants.filter((p) => p.attributes?.inCall === 'true').map((p) => p.identity)
-        );
+        const currentInCall = new Set(remoteParticipants.map((p) => p.identity));
         const previousInCall = knownInCallRef.current;
         if (previousInCall) {
             for (const identity of currentInCall) {

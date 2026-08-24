@@ -71,7 +71,6 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
         await localParticipant.setMicrophoneEnabled(false);
         await localParticipant.setCameraEnabled(false);
         await localParticipant.setScreenShareEnabled(false);
-        await localParticipant.setAttributes({ inCall: 'false' });
         playDiscordSound('leave');
         onLeave();
     };

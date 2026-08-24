@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogOut, Loader2 } from 'lucide-react';
-import { useLocalParticipant } from '@livekit/components-react';
 
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validation/auth';
-import { getAudioCaptureOptions, getNoiseSuppressionPreference, setNoiseSuppressionPreference } from '@/lib/utils';
+import { getNoiseSuppressionPreference, setNoiseSuppressionPreference } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,24 +28,15 @@ interface SettingsModalProps {
 
 export function SettingsModal({ open, onOpenChange, username }: SettingsModalProps) {
     const router = useRouter();
-    const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
     const [serverError, setServerError] = useState('');
     const [success, setSuccess] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
     const [noiseSuppression, setNoiseSuppression] = useState(getNoiseSuppressionPreference);
 
-    const handleToggleNoiseSuppression = async () => {
+    const handleToggleNoiseSuppression = () => {
         const next = !noiseSuppression;
         setNoiseSuppression(next);
         setNoiseSuppressionPreference(next);
-        if (isMicrophoneEnabled) {
-            try {
-                await localParticipant.setMicrophoneEnabled(false);
-                await localParticipant.setMicrophoneEnabled(true, getAudioCaptureOptions());
-            } catch (err) {
-                console.error('Não foi possível aplicar a supressão de ruído', err);
-            }
-        }
     };
 
     const form = useForm<ChangePasswordInput>({

@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Hash, Volume2, VolumeX, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ArrowLeft, Users, X, Radio } from 'lucide-react';
+import { Hash, Volume2, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ArrowLeft, Users, X, Radio, Plus, Trash2 } from 'lucide-react';
 import { Participant } from 'livekit-client';
-import { useLocalParticipant } from '@livekit/components-react';
-import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
 import type { ChannelDTO } from '@/lib/types';
 import { SettingsModal } from './SettingsModal';
 import { MembersSidebar } from './MembersSidebar';
+import { CreateChannelDialog } from './CreateChannelDialog';
+import { DeleteChannelDialog } from './DeleteChannelDialog';
 import { Logo } from '@/components/Logo';
-import { useParticipantAudio } from '@/components/call/ParticipantAudioContext';
-import { ParticipantVolumePanel } from '@/components/call/ParticipantVolumePanel';
+import type { VoiceControlState } from '@/components/call/VoiceRoomBridge';
 
 function LiveBadge() {
     return (
@@ -22,66 +21,72 @@ function LiveBadge() {
 interface DiscordLayoutProps {
     children: React.ReactNode;
     serverName: string;
+    serverId: string;
     channels: ChannelDTO[];
     activeChannelId: string;
     onChannelSelect: (channelId: string) => void;
-    isConnected: boolean;
+    onChannelCreated: (channel: ChannelDTO) => void;
+    onChannelDeleted: (channelId: string) => void;
+    localIdentity: string;
+    username: string;
+    voiceChannelId: string | null;
+    voiceState: VoiceControlState | null;
     onLeaveCall: () => void;
     activeParticipants?: Participant[];
-    username: string;
     hideMembersSidebar?: boolean;
+    voiceParticipantsSlotRef?: (el: HTMLDivElement | null) => void;
 }
 
-export function Layout({ children, serverName, channels, activeChannelId, onChannelSelect, isConnected, onLeaveCall, activeParticipants = [], username, hideMembersSidebar = false }: DiscordLayoutProps) {
-    const { isMicrophoneEnabled, isScreenShareEnabled, localParticipant } = useLocalParticipant();
-    const { isDeafened, toggleDeafen: toggleDeafenState, isMuted } = useParticipantAudio();
+export function Layout({
+    children,
+    serverName,
+    serverId,
+    channels,
+    activeChannelId,
+    onChannelSelect,
+    onChannelCreated,
+    onChannelDeleted,
+    localIdentity,
+    username,
+    voiceChannelId,
+    voiceState,
+    onLeaveCall,
+    activeParticipants = [],
+    hideMembersSidebar = false,
+    voiceParticipantsSlotRef,
+}: DiscordLayoutProps) {
     const [showSettings, setShowSettings] = useState(false);
-    const [openVolumeIdentity, setOpenVolumeIdentity] = useState<string | null>(null);
     const [mobileView, setMobileView] = useState<'sidebar' | 'content'>('sidebar');
     const [showMembersMobile, setShowMembersMobile] = useState(false);
+    const [createChannelType, setCreateChannelType] = useState<'TEXT' | 'VOICE' | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<ChannelDTO | null>(null);
 
     const handleChannelSelect = (channelId: string) => {
         onChannelSelect(channelId);
         setMobileView('content');
     };
 
-    const callParticipants = activeParticipants.filter(
-        (p) => p.identity !== localParticipant.identity && p.attributes?.inCall === 'true'
-    ).sort((a, b) => Number(b.isScreenShareEnabled) - Number(a.isScreenShareEnabled));
-
     const textChannels = channels.filter((c) => c.type === 'TEXT');
     const voiceChannels = channels.filter((c) => c.type === 'VOICE');
+    const voiceChannelName = channels.find((c) => c.id === voiceChannelId)?.name ?? '';
 
-    const handleLeaveCall = async () => {
-        await localParticipant.setMicrophoneEnabled(false);
-        await localParticipant.setCameraEnabled(false);
-        await localParticipant.setScreenShareEnabled(false);
-        await localParticipant.setAttributes({ inCall: 'false' });
-        playDiscordSound('leave');
-        onLeaveCall();
-    };
+    const callParticipantsByChannel = new Map<string, Participant[]>();
+    for (const p of activeParticipants) {
+        if (p.identity === localIdentity) continue;
+        if (p.attributes?.inCall !== 'true') continue;
+        const cid = p.attributes?.voiceChannelId;
+        if (!cid) continue;
+        const group = callParticipantsByChannel.get(cid);
+        if (group) group.push(p);
+        else callParticipantsByChannel.set(cid, [p]);
+    }
 
-    const isInRoom = isConnected;
+    const isInRoom = voiceState !== null;
+    const micMuted = isInRoom ? !voiceState.isMicrophoneEnabled : false;
+    const isDeafened = voiceState?.isDeafened ?? false;
 
-    const toggleMic = async () => {
-        if (!isInRoom) return;
-        const next = !isMicrophoneEnabled;
-        playDiscordSound(next ? 'unmute' : 'mute');
-        const options = next ? await getAudioCaptureOptions() : undefined;
-        localParticipant.setMicrophoneEnabled(next, options).catch(console.error);
-    };
-
-    const toggleDeafen = () => {
-        if (!isInRoom) return;
-        const next = !isDeafened;
-        toggleDeafenState();
-        playDiscordSound(next ? 'deafen' : 'undeafen');
-        if (next && isMicrophoneEnabled) {
-            localParticipant.setMicrophoneEnabled(false).catch(console.error);
-        }
-    };
-
-    const micMuted = isInRoom ? !isMicrophoneEnabled : false;
+    const toggleMic = () => voiceState?.toggleMic();
+    const toggleDeafen = () => voiceState?.toggleDeafen();
 
     return (
         <div className="flex h-dvh bg-[#0F1012] text-[#EDEBE7] overflow-hidden font-sans antialiased">
@@ -103,130 +108,151 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-2 py-4">
-                    {textChannels.length > 0 && (
-                        <div className="mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
+                    <div className="flex items-center justify-between pl-3 pr-1">
+                        <span className="text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
                             Texto
-                        </div>
-                    )}
+                        </span>
+                        <button
+                            onClick={() => setCreateChannelType('TEXT')}
+                            className="p-1 rounded text-[#63656B] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors"
+                            title="Criar canal de texto"
+                        >
+                            <Plus size={14} />
+                        </button>
+                    </div>
                     {textChannels.map((channel) => (
-                        <button
-                            key={channel.id}
-                            onClick={() => handleChannelSelect(channel.id)}
-                            className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 mb-0.5 text-[14px] transition-colors rounded-lg"
-                        >
+                        <div key={channel.id} className="w-full group relative flex items-center rounded-lg mb-0.5">
                             {activeChannelId === channel.id && (
                                 <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
                             )}
-                            <Hash
-                                size={17}
-                                className={activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
-                            />
-                            <span className={activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
-                                {channel.name}
-                            </span>
-                        </button>
-                    ))}
-
-                    {voiceChannels.length > 0 && (
-                        <div className="mt-5 mb-2 px-3 text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
-                            Voz
+                            <button
+                                onClick={() => handleChannelSelect(channel.id)}
+                                className="flex-1 min-w-0 flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
+                            >
+                                <Hash
+                                    size={17}
+                                    className={`shrink-0 ${activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}`}
+                                />
+                                <span className={`truncate ${activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}`}>
+                                    {channel.name}
+                                </span>
+                            </button>
+                            {channel.canDelete && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel); }}
+                                    className="shrink-0 mr-1 p-1.5 rounded text-[#63656B] opacity-0 group-hover:opacity-100 hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all"
+                                    title="Apagar canal"
+                                >
+                                    <Trash2 size={13} />
+                                </button>
+                            )}
                         </div>
-                    )}
-                    {voiceChannels.map((channel) => (
-                        <button
-                            key={channel.id}
-                            onClick={() => handleChannelSelect(channel.id)}
-                            className="w-full group relative flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
-                        >
-                            {activeChannelId === channel.id && (
-                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
-                            )}
-                            <Volume2
-                                size={17}
-                                className={activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}
-                            />
-                            <span className={activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}>
-                                {channel.name}
-                            </span>
-                        </button>
                     ))}
 
-                    {(isConnected || callParticipants.length > 0) && (
-                        <div className="ml-3 mt-1 flex flex-col gap-0.5">
-                            {isConnected && (
-                                <div className="group flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className="relative shrink-0">
-                                            <div
-                                                className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${localParticipant.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
-                                                    }`}
-                                            >
-                                                {(username || localParticipant.identity)?.[0]?.toUpperCase()}
-                                            </div>
-                                            {micMuted && (
-                                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
-                                                    <MicOff size={9} className="text-red-500" />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <span className="text-[13px] text-[#B4B6BB] truncate">
-                                                {username || localParticipant.identity} (você)
-                                            </span>
-                                            {isScreenShareEnabled && <LiveBadge />}
-                                        </div>
-                                    </div>
+                    <div className="flex items-center justify-between pl-3 pr-1 mt-5">
+                        <span className="text-[11px] font-medium text-[#8B8D93] uppercase tracking-wider">
+                            Voz
+                        </span>
+                        <button
+                            onClick={() => setCreateChannelType('VOICE')}
+                            className="p-1 rounded text-[#63656B] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors"
+                            title="Criar canal de voz"
+                        >
+                            <Plus size={14} />
+                        </button>
+                    </div>
+                    {voiceChannels.map((channel) => {
+                        const isMyChannel = voiceChannelId === channel.id;
+                        const otherMembers = callParticipantsByChannel.get(channel.id) ?? [];
+                        const showCallSection = (isMyChannel && isInRoom) || otherMembers.length > 0;
+
+                        return (
+                            <div key={channel.id} className="mb-0.5">
+                                <div className="w-full group relative flex items-center rounded-lg">
+                                    {activeChannelId === channel.id && (
+                                        <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
+                                    )}
                                     <button
-                                        onClick={handleLeaveCall}
-                                        className="p-1.5 rounded-lg text-[#63656B] hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all shrink-0"
-                                        title="Sair da chamada"
+                                        onClick={() => handleChannelSelect(channel.id)}
+                                        className="flex-1 min-w-0 flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
                                     >
-                                        <PhoneOff size={14} />
+                                        <Volume2
+                                            size={17}
+                                            className={`shrink-0 ${activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}`}
+                                        />
+                                        <span className={`truncate ${activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}`}>
+                                            {channel.name}
+                                        </span>
                                     </button>
-                                </div>
-                            )}
-                            {callParticipants.map((p) => {
-                                const isOpen = openVolumeIdentity === p.identity;
-                                const muted = isMuted(p.identity);
-                                return (
-                                    <div key={p.identity}>
-                                        <div
-                                            onClick={() => setOpenVolumeIdentity((prev) => (prev === p.identity ? null : p.identity))}
-                                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer"
+                                    {channel.canDelete && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel); }}
+                                            className="shrink-0 mr-1 p-1.5 rounded text-[#63656B] opacity-0 group-hover:opacity-100 hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all"
+                                            title="Apagar canal"
                                         >
-                                            <div className="relative shrink-0">
-                                                <div
-                                                    className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${p.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
-                                                        }`}
-                                                >
-                                                    {p.name?.[0]?.toUpperCase() || p.identity?.[0]?.toUpperCase()}
-                                                </div>
-                                                {!p.isMicrophoneEnabled && (
-                                                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
-                                                        <MicOff size={9} className="text-[#8B8D93]" />
+                                            <Trash2 size={13} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {showCallSection && (
+                                    <div className="ml-3 mt-0.5 flex flex-col gap-0.5">
+                                        {isMyChannel && isInRoom && (
+                                            <div className="group flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="relative shrink-0">
+                                                        <div
+                                                            className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${voiceState?.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
+                                                                }`}
+                                                        >
+                                                            {(username || localIdentity)?.[0]?.toUpperCase()}
+                                                        </div>
+                                                        {micMuted && (
+                                                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#16171A] rounded-full flex items-center justify-center">
+                                                                <MicOff size={9} className="text-red-500" />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                            <span className="text-[13px] text-[#B4B6BB] truncate flex-1 min-w-0">
-                                                {p.name || p.identity}
-                                            </span>
-                                            {p.isScreenShareEnabled && <LiveBadge />}
-                                            {muted ? (
-                                                <VolumeX size={14} className="text-[#F2555A] shrink-0" />
-                                            ) : (
-                                                <Volume2 size={14} className="text-[#63656B] shrink-0" />
-                                            )}
-                                        </div>
-                                        {isOpen && (
-                                            <div className="px-3 pb-2 pt-1">
-                                                <ParticipantVolumePanel volumeKey={p.identity} name={p.name || p.identity} />
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="text-[13px] text-[#B4B6BB] truncate">
+                                                            {username || localIdentity} (você)
+                                                        </span>
+                                                        {voiceState?.isScreenShareEnabled && <LiveBadge />}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={onLeaveCall}
+                                                    className="p-1.5 rounded-lg text-[#63656B] hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all shrink-0"
+                                                    title="Sair da chamada"
+                                                >
+                                                    <PhoneOff size={14} />
+                                                </button>
                                             </div>
                                         )}
+                                        {isMyChannel && isInRoom ? (
+
+                                            <div ref={voiceParticipantsSlotRef} />
+                                        ) : (
+
+                                            otherMembers.map((p) => (
+                                                <div key={p.identity} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg min-w-0">
+                                                    <div className="w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden shrink-0">
+                                                        {p.name?.[0]?.toUpperCase() || p.identity?.[0]?.toUpperCase()}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="text-[13px] text-[#B4B6BB] truncate">
+                                                            {p.name || p.identity}
+                                                        </span>
+                                                        {p.attributes?.screenSharing === 'true' && <LiveBadge />}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
 
                 <div className="min-h-16 px-3 pb-[env(safe-area-inset-bottom)] flex items-center justify-between shrink-0 border-t border-white/4">
@@ -238,7 +264,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                         <div className="flex flex-col min-w-0">
                             <span className="text-[13px] font-medium truncate">{username || 'Conectando...'}</span>
                             <span className="text-[11px] text-[#63656B] truncate">
-                                {isInRoom ? 'Em chamada' : 'Online'}
+                                {isInRoom ? `Em chamada — ${voiceChannelName}` : 'Online'}
                             </span>
                         </div>
                     </div>
@@ -303,7 +329,7 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
 
             {!hideMembersSidebar && (
                 <div className="hidden lg:flex">
-                    <MembersSidebar participants={activeParticipants} localIdentity={localParticipant.identity} />
+                    <MembersSidebar participants={activeParticipants} localIdentity={localIdentity} channels={channels} />
                 </div>
             )}
 
@@ -320,12 +346,26 @@ export function Layout({ children, serverName, channels, activeChannelId, onChan
                         >
                             <X size={18} />
                         </button>
-                        <MembersSidebar participants={activeParticipants} localIdentity={localParticipant.identity} />
+                        <MembersSidebar participants={activeParticipants} localIdentity={localIdentity} channels={channels} />
                     </div>
                 </div>
             )}
 
             <SettingsModal open={showSettings} onOpenChange={setShowSettings} username={username} />
+
+            <CreateChannelDialog
+                open={createChannelType !== null}
+                onOpenChange={(open) => !open && setCreateChannelType(null)}
+                type={createChannelType ?? 'TEXT'}
+                serverId={serverId}
+                onCreated={onChannelCreated}
+            />
+
+            <DeleteChannelDialog
+                channel={deleteTarget}
+                onOpenChange={(open) => !open && setDeleteTarget(null)}
+                onDeleted={onChannelDeleted}
+            />
         </div>
     );
 }

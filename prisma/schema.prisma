@@ -18,12 +18,13 @@ enum ChannelType {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  username  String    @unique
-  password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  messages  Message[]
+  id              String    @id @default(cuid())
+  username        String    @unique
+  password        String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  messages        Message[]
+  createdChannels Channel[] @relation("ChannelCreator")
 
   @@map("users")
 }
@@ -39,16 +40,18 @@ model Server {
 }
 
 model Channel {
-  id        String      @id @default(cuid())
-  name      String
-  type      ChannelType
+  id          String      @id @default(cuid())
+  name        String
+  type        ChannelType
   // Identifies the LiveKit room for VOICE channels (unused for TEXT channels).
-  roomName  String?
-  server    Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  serverId  String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  messages  Message[]
+  roomName    String?
+  server      Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId    String
+  createdBy   User?       @relation("ChannelCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  messages    Message[]
 
   @@unique([serverId, name, type])
   @@map("channels")

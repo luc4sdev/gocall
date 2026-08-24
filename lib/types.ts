@@ -3,6 +3,7 @@ export interface ChannelDTO {
     name: string;
     type: 'TEXT' | 'VOICE';
     roomName: string | null;
+    canDelete: boolean;
 }
 
 export interface ServerDTO {

@@ -13,17 +13,12 @@ interface CustomVideoGridProps {
 }
 
 export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVideoGridProps) {
-    const allTracks = useTracks(
+    const tracks = useTracks(
         [
             { source: Track.Source.Camera, withPlaceholder: true },
             { source: Track.Source.ScreenShare, withPlaceholder: false },
         ],
         { onlySubscribed: false }
-    );
-
-    const tracks = useMemo(
-        () => allTracks.filter(t => t.participant.attributes?.inCall === 'true'),
-        [allTracks]
     );
 
     const screenShareTracks = useMemo(
