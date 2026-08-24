@@ -121,6 +121,13 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+[data-lk-theme] {
+  --lk-accent-bg: var(--brand) !important;
+  --lk-accent2: var(--brand-hover) !important;
+  --lk-accent3: var(--brand-hover) !important;
+  --lk-accent4: var(--brand-hover) !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

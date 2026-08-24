@@ -236,7 +236,7 @@ export function Layout({
                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                     <div className="relative shrink-0">
                                                         <div
-                                                            className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${voiceState?.isSpeaking ? 'ring-2 ring-[#4ADE80] ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
+                                                            className={`w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden transition-shadow ${voiceState?.isSpeaking ? 'ring-2 ring-brand ring-offset-2 ring-offset-[#16171A] animate-pulse' : ''
                                                                 }`}
                                                         >
                                                             {(username || localIdentity)?.[0]?.toUpperCase()}
