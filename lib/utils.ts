@@ -24,13 +24,51 @@ export function setNoiseSuppressionPreference(value: boolean) {
     window.localStorage.setItem(NOISE_SUPPRESSION_KEY, String(value));
 }
 
+const AUDIO_INPUT_DEVICE_KEY = 'gocall:audioInputDeviceId';
+const AUDIO_OUTPUT_DEVICE_KEY = 'gocall:audioOutputDeviceId';
+
+export const AUDIO_DEVICE_CHANGE_EVENT = 'gocall:audio-device-change';
+
+export interface AudioDeviceChangeDetail {
+    kind: 'audioinput' | 'audiooutput';
+    deviceId: string;
+}
+
+export function getAudioInputDevicePreference(): string {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(AUDIO_INPUT_DEVICE_KEY) ?? '';
+}
+
+export function setAudioInputDevicePreference(deviceId: string) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(AUDIO_INPUT_DEVICE_KEY, deviceId);
+    window.dispatchEvent(new CustomEvent<AudioDeviceChangeDetail>(AUDIO_DEVICE_CHANGE_EVENT, {
+        detail: { kind: 'audioinput', deviceId },
+    }));
+}
+
+export function getAudioOutputDevicePreference(): string {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(AUDIO_OUTPUT_DEVICE_KEY) ?? '';
+}
+
+export function setAudioOutputDevicePreference(deviceId: string) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(AUDIO_OUTPUT_DEVICE_KEY, deviceId);
+    window.dispatchEvent(new CustomEvent<AudioDeviceChangeDetail>(AUDIO_DEVICE_CHANGE_EVENT, {
+        detail: { kind: 'audiooutput', deviceId },
+    }));
+}
+
 export function getAudioCaptureOptions() {
     const noiseSuppression = getNoiseSuppressionPreference();
+    const deviceId = getAudioInputDevicePreference();
     return {
         noiseSuppression,
         echoCancellation: true,
         autoGainControl: true,
         voiceIsolation: noiseSuppression,
+        ...(deviceId ? { deviceId } : {}),
     };
 }
 
@@ -59,7 +97,7 @@ function playTone(
     osc.stop(startTime + duration + 0.02);
 }
 
-export function playDiscordSound(type: SoundType) {
+export function playSound(type: SoundType) {
     try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return;

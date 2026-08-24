@@ -10,6 +10,7 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import type { ChannelDTO } from '@/lib/types';
+import { Button } from '../ui/button';
 
 interface CreateChannelDialogProps {
     open: boolean;
@@ -84,14 +85,14 @@ export function CreateChannelDialog({ open, onOpenChange, type, serverId, onCrea
 
                     {error && <p className="text-sm text-[#F2555A]">{error}</p>}
 
-                    <button
+                    <Button
                         type="submit"
                         disabled={!name.trim() || isSubmitting}
-                        className="w-full bg-[#FF6B4A] hover:bg-[#FF7D5F] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed text-[#0F1012] font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                        className="w-full bg-[#FF6B4A] hover:bg-[#FF7D5F] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
                     >
                         {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                         Criar canal
-                    </button>
+                    </Button>
                 </form>
             </DialogContent>
         </Dialog>

@@ -74,7 +74,7 @@ export function DeleteChannelDialog({ channel, onOpenChange, onDeleted }: Delete
                     <button
                         onClick={handleDelete}
                         disabled={isDeleting}
-                        className="flex-1 bg-[#F2555A] hover:bg-[#F2555A]/85 disabled:opacity-40 text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                        className="flex-1 bg-[#F2555A] hover:bg-[#F2555A]/85 disabled:opacity-40 cursor-pointer text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
                     >
                         {isDeleting && <Loader2 size={16} className="animate-spin" />}
                         Apagar

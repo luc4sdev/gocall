@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useLocalParticipant, useParticipants } from '@livekit/components-react';
-import { playDiscordSound } from '@/lib/utils';
+import { playSound } from '@/lib/utils';
 
 export function CallPresenceSounds() {
     const participants = useParticipants();
@@ -17,10 +17,10 @@ export function CallPresenceSounds() {
         const previousInCall = knownInCallRef.current;
         if (previousInCall) {
             for (const identity of currentInCall) {
-                if (!previousInCall.has(identity)) playDiscordSound('join');
+                if (!previousInCall.has(identity)) playSound('join');
             }
             for (const identity of previousInCall) {
-                if (!currentInCall.has(identity)) playDiscordSound('leave');
+                if (!currentInCall.has(identity)) playSound('leave');
             }
         }
         knownInCallRef.current = currentInCall;
@@ -31,10 +31,10 @@ export function CallPresenceSounds() {
         const previousSharing = knownSharingRef.current;
         if (previousSharing) {
             for (const identity of currentSharing) {
-                if (!previousSharing.has(identity)) playDiscordSound('screenshare-start');
+                if (!previousSharing.has(identity)) playSound('screenshare-start');
             }
             for (const identity of previousSharing) {
-                if (!currentSharing.has(identity)) playDiscordSound('screenshare-stop');
+                if (!currentSharing.has(identity)) playSound('screenshare-stop');
             }
         }
         knownSharingRef.current = currentSharing;

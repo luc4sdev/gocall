@@ -2,8 +2,15 @@
 
 import { useEffect } from 'react';
 import { ConnectionState } from 'livekit-client';
-import { useConnectionState, useIsSpeaking, useLocalParticipant } from '@livekit/components-react';
-import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
+import { useConnectionState, useIsSpeaking, useLocalParticipant, useRoomContext } from '@livekit/components-react';
+import {
+    AUDIO_DEVICE_CHANGE_EVENT,
+    type AudioDeviceChangeDetail,
+    getAudioCaptureOptions,
+    getAudioInputDevicePreference,
+    getAudioOutputDevicePreference,
+    playSound,
+} from '@/lib/utils';
 import { useParticipantAudio } from './ParticipantAudioContext';
 
 export interface VoiceControlState {
@@ -22,6 +29,7 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
     const isSpeaking = useIsSpeaking(localParticipant);
     const { isDeafened, toggleDeafen: toggleDeafenState } = useParticipantAudio();
     const connectionState = useConnectionState();
+    const room = useRoomContext();
 
     useEffect(() => {
 
@@ -34,7 +42,7 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
             if (cancelled) return;
             try {
                 await localParticipant.setMicrophoneEnabled(true, options);
-                if (!cancelled) playDiscordSound('join');
+                if (!cancelled) playSound('join');
             } catch (err) {
                 console.error('Não foi possível ativar o microfone', err);
             }
@@ -46,9 +54,28 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
     }, [connectionState]);
 
     useEffect(() => {
+        if (connectionState !== ConnectionState.Connected) return;
+
+        const applyDevice = (kind: 'audioinput' | 'audiooutput', deviceId: string) => {
+            if (!deviceId) return;
+            room.switchActiveDevice(kind, deviceId).catch(console.error);
+        };
+
+        applyDevice('audioinput', getAudioInputDevicePreference());
+        applyDevice('audiooutput', getAudioOutputDevicePreference());
+
+        const handleDeviceChange = (e: Event) => {
+            const detail = (e as CustomEvent<AudioDeviceChangeDetail>).detail;
+            if (detail) applyDevice(detail.kind, detail.deviceId);
+        };
+        window.addEventListener(AUDIO_DEVICE_CHANGE_EVENT, handleDeviceChange);
+        return () => window.removeEventListener(AUDIO_DEVICE_CHANGE_EVENT, handleDeviceChange);
+    }, [connectionState, room]);
+
+    useEffect(() => {
         const toggleMic = () => {
             const next = !isMicrophoneEnabled;
-            playDiscordSound(next ? 'unmute' : 'mute');
+            playSound(next ? 'unmute' : 'mute');
             (async () => {
                 const options = next ? await getAudioCaptureOptions() : undefined;
                 localParticipant.setMicrophoneEnabled(next, options).catch(console.error);
@@ -58,7 +85,7 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
         const toggleDeafen = () => {
             const next = !isDeafened;
             toggleDeafenState();
-            playDiscordSound(next ? 'deafen' : 'undeafen');
+            playSound(next ? 'deafen' : 'undeafen');
             if (next && isMicrophoneEnabled) {
                 localParticipant.setMicrophoneEnabled(false).catch(console.error);
             }

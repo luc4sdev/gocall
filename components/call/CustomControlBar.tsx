@@ -2,7 +2,7 @@ import { useLocalParticipant } from '@livekit/components-react';
 import { ScreenSharePresets, VideoPreset } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Monitor } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { getAudioCaptureOptions, playDiscordSound } from '@/lib/utils';
+import { getAudioCaptureOptions, playSound } from '@/lib/utils';
 import {
     Dialog,
     DialogContent,
@@ -47,7 +47,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
     useEffect(() => {
         if (prevScreenShareRef.current !== isScreenShareEnabled) {
             if (!isLeavingRef.current) {
-                playDiscordSound(isScreenShareEnabled ? 'screenshare-start' : 'screenshare-stop');
+                playSound(isScreenShareEnabled ? 'screenshare-start' : 'screenshare-stop');
             }
             prevScreenShareRef.current = isScreenShareEnabled;
         }
@@ -71,7 +71,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
         await localParticipant.setMicrophoneEnabled(false);
         await localParticipant.setCameraEnabled(false);
         await localParticipant.setScreenShareEnabled(false);
-        playDiscordSound('leave');
+        playSound('leave');
         onLeave();
     };
     return (
@@ -79,7 +79,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
             <button
                 onClick={async () => {
                     const next = !isMicrophoneEnabled;
-                    playDiscordSound(next ? 'unmute' : 'mute');
+                    playSound(next ? 'unmute' : 'mute');
                     const options = next ? await getAudioCaptureOptions() : undefined;
                     localParticipant.setMicrophoneEnabled(next, options).catch(console.error);
                 }}

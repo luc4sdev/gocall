@@ -1,8 +1,9 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalParticipant } from '@livekit/components-react';
 import { Send, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import type { MessageDTO } from '@/lib/types';
 import type { ChatBridgeState } from './ChatBridge';
 
@@ -26,6 +27,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
     const [history, setHistory] = useState<MessageDTO[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [isSending, setIsSending] = useState(false);
+    const inputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -88,6 +90,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
             console.error('Erro ao enviar mensagem via LiveKit:', err);
         } finally {
             setIsSending(false);
+            inputRef.current?.focus();
         }
 
         try {
@@ -152,21 +155,21 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
                 )}
             </div>
 
-            <form onSubmit={handleSend} className="bg-[#383A40] rounded-lg p-2 flex items-center gap-3 shrink-0">
-                <input
+            <form onSubmit={handleSend} className="flex items-center gap-2 rounded-xl border border-white/6 bg-[#1F2023] px-3 py-2 shrink-0">
+                <Input
+                    ref={inputRef}
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Conversar"
-                    className="bg-transparent border-none outline-none flex-1 text-gray-200 placeholder:text-gray-500"
-                    disabled={isSending}
+                    className="h-auto flex-1 border-none bg-transparent px-0 py-0 text-[15px] text-[#EDEBE7] shadow-none placeholder:text-[#63656B] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
                 />
                 <button
                     type="submit"
                     disabled={!message.trim() || isSending}
-                    className="p-2 text-gray-400 hover:text-white disabled:opacity-50 transition-colors"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg cursor-pointer bg-[#FF6B4A] text-white transition-colors hover:bg-[#FF7D5F] disabled:bg-white/5 disabled:text-[#63656B] disabled:cursor-not-allowed"
                 >
-                    <Send size={20} />
+                    <Send size={16} />
                 </button>
             </form>
         </div>
