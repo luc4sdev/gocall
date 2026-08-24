@@ -13,10 +13,22 @@ import {
 
 const RESOLUTIONS = [
     {
+        label: '480p',
+        description: 'Mais leve — menos travamento em conexões fracas',
+        preset: new VideoPreset(854, 480, 700_000, 30, 'medium'),
+        contentHint: 'detail',
+    },
+    {
         label: '720p',
         description: 'Boa qualidade, menor consumo de rede',
         preset: ScreenSharePresets.h720fps30,
         contentHint: 'detail',
+    },
+    {
+        label: '720p 60fps',
+        description: 'Fluido e mais leve que o 1080p 60fps',
+        preset: new VideoPreset(1280, 720, 3_000_000, 60, 'high'),
+        contentHint: 'motion',
     },
     {
         label: '1080p',
@@ -129,7 +141,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex flex-col gap-2">
+                    <div className="flex max-h-[60dvh] flex-col gap-2 overflow-y-auto">
                         {RESOLUTIONS.map((r) => (
                             <button
                                 key={r.label}
