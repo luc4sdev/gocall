@@ -17,6 +17,7 @@ import { VoiceRoomBridge, type VoiceControlState } from '@/components/call/Voice
 import { VoiceParticipantsList } from '@/components/call/VoiceParticipantsList';
 import { ChatBridge, type ChatBridgeState } from '@/components/chat/ChatBridge';
 import { ChannelSyncBridge, type BroadcastChannelSync, type ChannelSyncMessage } from '@/components/layout/ChannelSyncBridge';
+import { LobbyReconnectBridge } from '@/components/layout/LobbyReconnectBridge';
 import type { ServerDTO, ChannelDTO } from '@/lib/types';
 
 const ROOM_OPTIONS: RoomOptions = { dynacast: true };
@@ -136,6 +137,17 @@ export function HomeClient({ username }: { username: string }) {
     broadcastChannelSyncRef.current = broadcast;
   }, []);
 
+  const handleLobbyDisconnected = useCallback(() => {
+    if (!server) return;
+    const lobbyRoomName = `lobby-${server.id}`;
+    fetch(`/api/livekit?room=${encodeURIComponent(lobbyRoomName)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.token) setLobbyToken(data.token);
+      })
+      .catch((err) => console.error('Falha ao reconectar ao lobby:', err));
+  }, [server]);
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -220,6 +232,7 @@ export function HomeClient({ username }: { username: string }) {
     >
       <ParticipantsSpy onChange={setParticipants} />
       <LobbyIdentityReporter onIdentity={setLocalIdentity} />
+      <LobbyReconnectBridge onDisconnected={handleLobbyDisconnected} />
       <LobbyPresence
         voiceChannelId={voiceChannel?.id ?? null}
         isSpeaking={voiceState?.isSpeaking ?? false}
