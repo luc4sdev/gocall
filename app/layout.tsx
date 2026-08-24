@@ -25,7 +25,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className="h-full antialiased dark">
+    <html lang="pt-BR" className="h-full antialiased dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var c=localStorage.getItem('gocall:accentColor');if(c)document.documentElement.style.setProperty('--brand',c);}catch(e){}`,
+          }}
+        />
+      </head>
       <body className={`${inter.className} min-h-full flex flex-col bg-[#313338] text-gray-100 overflow-hidden`}>
         {children}
       </body>

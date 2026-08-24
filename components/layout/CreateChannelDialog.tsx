@@ -65,7 +65,7 @@ export function CreateChannelDialog({ open, onOpenChange, type, serverId, onCrea
             <DialogContent className="bg-[#16171A] ring-white/6 sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle className="text-[#EDEBE7] flex items-center gap-2">
-                        <Icon size={18} className="text-[#FF6B4A]" />
+                        <Icon size={18} className="text-brand" />
                         Criar canal de {type === 'TEXT' ? 'texto' : 'voz'}
                     </DialogTitle>
                     <DialogDescription className="text-[#8B8D93]">
@@ -80,7 +80,7 @@ export function CreateChannelDialog({ open, onOpenChange, type, serverId, onCrea
                         onChange={(e) => setName(e.target.value)}
                         maxLength={50}
                         placeholder={type === 'TEXT' ? 'novo-canal' : 'Sala nova'}
-                        className="w-full bg-[#0F1012] border border-white/8 rounded-lg px-3 py-2 text-sm text-[#EDEBE7] placeholder:text-[#63656B] outline-none focus:border-[#FF6B4A]/50 transition-colors"
+                        className="w-full bg-[#0F1012] border border-white/8 rounded-lg px-3 py-2 text-sm text-[#EDEBE7] placeholder:text-[#63656B] outline-none focus:border-brand/50 transition-colors"
                     />
 
                     {error && <p className="text-sm text-[#F2555A]">{error}</p>}
@@ -88,7 +88,7 @@ export function CreateChannelDialog({ open, onOpenChange, type, serverId, onCrea
                     <Button
                         type="submit"
                         disabled={!name.trim() || isSubmitting}
-                        className="w-full bg-[#FF6B4A] hover:bg-[#FF7D5F] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                        className="w-full bg-brand hover:bg-brand-hover disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
                     >
                         {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                         Criar canal

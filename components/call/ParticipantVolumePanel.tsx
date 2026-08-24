@@ -41,7 +41,7 @@ export function ParticipantVolumePanel({ volumeKey, name, className, muteLabel =
                 value={Math.round(volume * 100)}
                 disabled={muted}
                 onChange={(e) => setVolume(volumeKey, Number(e.target.value) / 100)}
-                className="w-full accent-[#FF6B4A] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                className="w-full accent-brand disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
             />
             <span className="text-[11px] text-[#63656B] text-right">
                 {muted ? 'Mutado para você' : `${Math.round(volume * 100)}%`}

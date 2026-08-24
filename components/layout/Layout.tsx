@@ -36,7 +36,7 @@ function CallTimer({ startedAt }: { startedAt: number }) {
     }, []);
 
     return (
-        <span className="shrink-0 leading-none text-[11px] font-medium text-[#FF6B4A] tabular-nums">
+        <span className="shrink-0 leading-none text-[11px] font-medium text-brand tabular-nums">
             {formatCallDuration(now - startedAt)}
         </span>
     );
@@ -123,7 +123,7 @@ export function Layout({
 
             <div className="hidden lg:flex w-16 bg-[#0B0C0D] flex-col items-center py-4 gap-3 shrink-0 border-r border-white/4">
                 <div className="relative group cursor-pointer">
-                    <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#FF6B4A] rounded-full" />
+                    <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-8 bg-brand rounded-full" />
                     <div className="w-11 h-11 rounded-2xl bg-[#1F2023] flex items-center justify-center transition-colors group-hover:bg-[#26282c]">
                         <Logo className="w-6 h-6" />
                     </div>
@@ -153,7 +153,7 @@ export function Layout({
                     {textChannels.map((channel) => (
                         <div key={channel.id} className="w-full group relative flex items-center rounded-lg mb-0.5">
                             {activeChannelId === channel.id && (
-                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
+                                <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-brand rounded-full" />
                             )}
                             <button
                                 onClick={() => handleChannelSelect(channel.id)}
@@ -161,7 +161,7 @@ export function Layout({
                             >
                                 <Hash
                                     size={17}
-                                    className={`shrink-0 ${activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}`}
+                                    className={`shrink-0 ${activeChannelId === channel.id ? 'text-brand' : 'text-[#63656B] group-hover:text-[#8B8D93]'}`}
                                 />
                                 <span className={`truncate ${activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}`}>
                                     {channel.name}
@@ -201,7 +201,7 @@ export function Layout({
                             <div key={channel.id} className="mb-0.5">
                                 <div className="w-full group relative flex items-center rounded-lg">
                                     {activeChannelId === channel.id && (
-                                        <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#FF6B4A] rounded-full" />
+                                        <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-brand rounded-full" />
                                     )}
                                     <button
                                         onClick={() => handleChannelSelect(channel.id)}
@@ -209,7 +209,7 @@ export function Layout({
                                     >
                                         <Volume2
                                             size={17}
-                                            className={`shrink-0 ${activeChannelId === channel.id ? 'text-[#FF6B4A]' : 'text-[#63656B] group-hover:text-[#8B8D93]'}`}
+                                            className={`shrink-0 ${activeChannelId === channel.id ? 'text-brand' : 'text-[#63656B] group-hover:text-[#8B8D93]'}`}
                                         />
                                         <span className="flex min-w-0 flex-1 items-baseline gap-2">
                                             <span className={`truncate ${activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}`}>

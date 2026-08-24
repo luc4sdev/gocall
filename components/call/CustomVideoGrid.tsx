@@ -137,7 +137,7 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVide
                             </p>
                             <Button
                                 onClick={toggleWatching}
-                                className="flex items-center gap-2 bg-[#FF6B4A] hover:bg-[#FF7D5F] text-[#0F1012] font-semibold text-sm py-2 px-4 rounded-xl transition-colors"
+                                className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-[#0F1012] font-semibold text-sm py-2 px-4 rounded-xl transition-colors"
                             >
                                 <Eye size={16} />
                                 Assistir
@@ -211,7 +211,7 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVide
                                     <div
                                         key={key}
                                         onClick={() => isScreenShare && setFocusedKey(key)}
-                                        className={`w-48 lg:w-full h-full lg:h-48 shrink-0 bg-[#1E1F23] rounded-lg overflow-hidden border transition-colors ${isScreenShare ? 'border-[#FF6B4A]/40 hover:border-[#FF6B4A] cursor-pointer' : 'border-white/6'
+                                        className={`w-48 lg:w-full h-full lg:h-48 shrink-0 bg-[#1E1F23] rounded-lg overflow-hidden border transition-colors ${isScreenShare ? 'border-brand/40 hover:border-brand cursor-pointer' : 'border-white/6'
                                             }`}
                                         title={isScreenShare ? 'Clique para destacar esta transmissão' : undefined}
                                     >

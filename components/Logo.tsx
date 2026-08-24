@@ -3,7 +3,7 @@ interface LogoProps {
     color?: string;
 }
 
-export function Logo({ className, color = '#FF6B4A' }: LogoProps) {
+export function Logo({ className, color = 'var(--brand)' }: LogoProps) {
     return (
         <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
             <circle

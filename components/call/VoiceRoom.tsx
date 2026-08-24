@@ -20,7 +20,7 @@ export function VoiceRoom({ onLeave, theaterMode, onTheaterModeChange, channelNa
     if (connectionState !== ConnectionState.Connected) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center bg-[#0B0C0D] gap-4">
-                <Loader2 size={28} className="text-[#FF6B4A] animate-spin" />
+                <Loader2 size={28} className="text-brand animate-spin" />
                 <p className="text-sm text-[#8B8D93]">Entrando em {channelName}...</p>
                 <button
                     onClick={onLeave}

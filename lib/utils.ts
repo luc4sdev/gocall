@@ -77,6 +77,36 @@ export function setAudioOutputDevicePreference(deviceId: string) {
 }
 
 
+const ACCENT_COLOR_KEY = 'gocall:accentColor';
+export const DEFAULT_ACCENT_COLOR = '#ff6b4a';
+const HEX_COLOR_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+
+export function normalizeHexColor(value: string): string | null {
+    const trimmed = value.trim();
+    if (!HEX_COLOR_REGEX.test(trimmed)) return null;
+    if (trimmed.length === 4) {
+        const [, r, g, b] = trimmed;
+        return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+    }
+    return trimmed.toLowerCase();
+}
+
+export function getAccentColorPreference(): string {
+    if (typeof window === 'undefined') return DEFAULT_ACCENT_COLOR;
+    return window.localStorage.getItem(ACCENT_COLOR_KEY) ?? DEFAULT_ACCENT_COLOR;
+}
+
+export function applyAccentColorPreference(hex?: string) {
+    if (typeof window === 'undefined') return;
+    document.documentElement.style.setProperty('--brand', hex ?? getAccentColorPreference());
+}
+
+export function setAccentColorPreference(hex: string) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(ACCENT_COLOR_KEY, hex);
+    applyAccentColorPreference(hex);
+}
+
 export async function getAudioCaptureOptions(): Promise<AudioCaptureOptions> {
     const deviceId = getAudioInputDevicePreference();
     const noiseSuppression = getAdvancedNoiseSuppressionPreference() ? false : getNoiseSuppressionPreference();

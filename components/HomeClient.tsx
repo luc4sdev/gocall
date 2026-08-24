@@ -197,7 +197,7 @@ export function HomeClient({ username }: { username: string }) {
   if (!lobbyToken || !server) {
     return (
       <div className="flex h-dvh bg-[#16171A] items-center justify-center flex-col text-gray-300">
-        <Logo className="w-10 h-10 animate-pulse text-[#FF6B4A] mb-4" />
+        <Logo className="w-10 h-10 animate-pulse mb-4" />
         <p>Conectando ao GoCall...</p>
       </div>
     );
@@ -296,7 +296,7 @@ export function HomeClient({ username }: { username: string }) {
               </ParticipantAudioProvider>
               <StartAudio
                 label="Clique para ativar o áudio"
-                className="fixed! top-auto! bottom-5! left-1/2! w-auto! -translate-x-1/2! transform-none! z-50! bg-[#FF6B4A]! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-[#FF7D5F]! transition-colors"
+                className="fixed! top-auto! bottom-5! left-1/2! w-auto! -translate-x-1/2! transform-none! z-50! bg-brand! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-brand-hover! transition-colors"
               />
             </LiveKitRoom>
           </div>

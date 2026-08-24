@@ -131,7 +131,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
                             <div
                                 key={msg.key}
                                 className={`flex items-start gap-2 sm:gap-4 p-2 rounded-md transition-colors border-l-2 ${isOwn
-                                    ? 'bg-[#FF6B4A]/8 border-[#FF6B4A] hover:bg-[#FF6B4A]/12'
+                                    ? 'bg-brand/8 border-brand hover:bg-brand/12'
                                     : 'border-transparent hover:bg-[#2B2D31]'
                                     }`}
                             >
@@ -140,7 +140,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
                                 </div>
                                 <div className="flex flex-col min-w-0">
                                     <div className="flex items-baseline gap-2">
-                                        <span className={`font-bold ${isOwn ? 'text-[#FF6B4A]' : 'text-gray-100'}`}>
+                                        <span className={`font-bold ${isOwn ? 'text-brand' : 'text-gray-100'}`}>
                                             {isOwn ? 'Você' : msg.authorName}
                                         </span>
                                         <span className="text-xs text-gray-400">
@@ -167,7 +167,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
                 <button
                     type="submit"
                     disabled={!message.trim() || isSending}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg cursor-pointer bg-[#FF6B4A] text-white transition-colors hover:bg-[#FF7D5F] disabled:bg-white/5 disabled:text-[#63656B] disabled:cursor-not-allowed"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg cursor-pointer bg-brand text-white transition-colors hover:bg-brand-hover disabled:bg-white/5 disabled:text-[#63656B] disabled:cursor-not-allowed"
                 >
                     <Send size={16} />
                 </button>

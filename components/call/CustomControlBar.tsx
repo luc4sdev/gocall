@@ -98,7 +98,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
             <button
                 onClick={() => localParticipant.setCameraEnabled(!isCameraEnabled).catch(console.error)}
                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isCameraEnabled
-                    ? 'bg-[#FF6B4A] text-[#0F1012] hover:bg-[#FF7D5F]'
+                    ? 'bg-brand text-[#0F1012] hover:bg-brand-hover'
                     : 'bg-[#1F2023] text-[#8B8D93] hover:bg-[#26282c] hover:text-[#EDEBE7]'
                     }`}
                 title={isCameraEnabled ? 'Desligar câmera' : 'Ligar câmera'}
@@ -112,7 +112,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                     : setShowShareDialog(true)
                 }
                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isScreenShareEnabled
-                    ? 'bg-[#FF6B4A] text-[#0F1012] hover:bg-[#FF7D5F]'
+                    ? 'bg-brand text-[#0F1012] hover:bg-brand-hover'
                     : 'bg-[#1F2023] text-[#8B8D93] hover:bg-[#26282c] hover:text-[#EDEBE7]'
                     }`}
                 title={isScreenShareEnabled ? 'Parar compartilhamento' : 'Compartilhar tela'}
@@ -134,15 +134,15 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                             <button
                                 key={r.label}
                                 onClick={() => startScreenShare(r)}
-                                className="group w-full flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-[#1F2023] hover:bg-[#26282c] hover:border-[#FF6B4A]/40 px-4 py-3 text-left transition-colors"
+                                className="group w-full flex items-center justify-between gap-3 rounded-xl border border-white/6 bg-[#1F2023] hover:bg-[#26282c] hover:border-brand/40 px-4 py-3 text-left transition-colors"
                             >
                                 <div className="flex flex-col">
-                                    <span className="text-[14px] font-medium text-[#EDEBE7] group-hover:text-[#FF6B4A] transition-colors">
+                                    <span className="text-[14px] font-medium text-[#EDEBE7] group-hover:text-brand transition-colors">
                                         {r.label}
                                     </span>
                                     <span className="text-[12px] text-[#8B8D93]">{r.description}</span>
                                 </div>
-                                <Monitor size={18} className="text-[#63656B] group-hover:text-[#FF6B4A] transition-colors shrink-0" />
+                                <Monitor size={18} className="text-[#63656B] group-hover:text-brand transition-colors shrink-0" />
                             </button>
                         ))}
                     </div>
