@@ -140,7 +140,7 @@ export function Layout({
                             {channel.canDelete && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel); }}
-                                    className="shrink-0 mr-1 p-1.5 rounded text-[#63656B] opacity-0 group-hover:opacity-100 hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all"
+                                    className="shrink-0 mr-1 p-1.5 rounded text-[#63656B] opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all"
                                     title="Apagar canal"
                                 >
                                     <Trash2 size={13} />
@@ -187,7 +187,7 @@ export function Layout({
                                     {channel.canDelete && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel); }}
-                                            className="shrink-0 mr-1 p-1.5 rounded text-[#63656B] opacity-0 group-hover:opacity-100 hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all"
+                                            className="shrink-0 mr-1 p-1.5 rounded text-[#63656B] opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all"
                                             title="Apagar canal"
                                         >
                                             <Trash2 size={13} />
