@@ -4,9 +4,12 @@ import { useEffect } from 'react';
 import { ConnectionState } from 'livekit-client';
 import { useConnectionState, useIsSpeaking, useLocalParticipant, useRoomContext } from '@livekit/components-react';
 import {
+    ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT,
     AUDIO_DEVICE_CHANGE_EVENT,
     type AudioDeviceChangeDetail,
-    getAudioCaptureOptions,
+    applyAdvancedNoiseSuppressionToMicrophone,
+    enableMicrophone,
+    getAdvancedNoiseSuppressionPreference,
     getAudioInputDevicePreference,
     getAudioOutputDevicePreference,
     playSound,
@@ -37,18 +40,27 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
         if (localParticipant.isMicrophoneEnabled) return;
 
         let cancelled = false;
+        let removeRetryListener: (() => void) | undefined;
         (async () => {
-            const options = getAudioCaptureOptions();
-            if (cancelled) return;
             try {
-                await localParticipant.setMicrophoneEnabled(true, options);
-                if (!cancelled) playSound('join');
+                const { advancedSuppressionActive } = await enableMicrophone(localParticipant);
+                if (cancelled) return;
+                playSound('join');
+
+                if (!advancedSuppressionActive && getAdvancedNoiseSuppressionPreference()) {
+                    const retry = () => {
+                        applyAdvancedNoiseSuppressionToMicrophone(localParticipant);
+                    };
+                    window.addEventListener('pointerdown', retry, { once: true });
+                    removeRetryListener = () => window.removeEventListener('pointerdown', retry);
+                }
             } catch (err) {
                 console.error('Não foi possível ativar o microfone', err);
             }
         })();
         return () => {
             cancelled = true;
+            removeRetryListener?.();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [connectionState]);
@@ -73,13 +85,25 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
     }, [connectionState, room]);
 
     useEffect(() => {
+        if (connectionState !== ConnectionState.Connected) return;
+
+        const applyAdvanced = () => {
+            applyAdvancedNoiseSuppressionToMicrophone(localParticipant);
+        };
+
+        window.addEventListener(ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT, applyAdvanced);
+        return () => window.removeEventListener(ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT, applyAdvanced);
+    }, [connectionState, localParticipant]);
+
+    useEffect(() => {
         const toggleMic = () => {
             const next = !isMicrophoneEnabled;
             playSound(next ? 'unmute' : 'mute');
-            (async () => {
-                const options = next ? await getAudioCaptureOptions() : undefined;
-                localParticipant.setMicrophoneEnabled(next, options).catch(console.error);
-            })();
+            if (next) {
+                enableMicrophone(localParticipant).catch(console.error);
+            } else {
+                localParticipant.setMicrophoneEnabled(false).catch(console.error);
+            }
         };
 
         const toggleDeafen = () => {

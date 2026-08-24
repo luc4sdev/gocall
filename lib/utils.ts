@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { LocalAudioTrack, Track, type AudioCaptureOptions, type LocalParticipant } from "livekit-client"
 
 declare global {
     interface Window {
@@ -22,6 +23,21 @@ export function getNoiseSuppressionPreference(): boolean {
 export function setNoiseSuppressionPreference(value: boolean) {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(NOISE_SUPPRESSION_KEY, String(value));
+}
+
+const ADVANCED_NOISE_SUPPRESSION_KEY = 'gocall:advancedNoiseSuppression';
+
+export const ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT = 'gocall:advanced-noise-suppression-change';
+
+export function getAdvancedNoiseSuppressionPreference(): boolean {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(ADVANCED_NOISE_SUPPRESSION_KEY) === 'true';
+}
+
+export function setAdvancedNoiseSuppressionPreference(value: boolean) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(ADVANCED_NOISE_SUPPRESSION_KEY, String(value));
+    window.dispatchEvent(new Event(ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT));
 }
 
 const AUDIO_INPUT_DEVICE_KEY = 'gocall:audioInputDeviceId';
@@ -60,16 +76,70 @@ export function setAudioOutputDevicePreference(deviceId: string) {
     }));
 }
 
-export function getAudioCaptureOptions() {
-    const noiseSuppression = getNoiseSuppressionPreference();
+export async function getAudioCaptureOptions(): Promise<AudioCaptureOptions> {
     const deviceId = getAudioInputDevicePreference();
+    let noiseSuppression = getNoiseSuppressionPreference();
+    let processor: AudioCaptureOptions['processor'];
+
+    if (getAdvancedNoiseSuppressionPreference()) {
+        processor = await createAdvancedNoiseSuppressionProcessor();
+        if (processor) noiseSuppression = false;
+    }
+
     return {
         noiseSuppression,
         echoCancellation: true,
         autoGainControl: true,
         voiceIsolation: noiseSuppression,
         ...(deviceId ? { deviceId } : {}),
+        ...(processor ? { processor } : {}),
     };
+}
+
+export async function createAdvancedNoiseSuppressionProcessor(): Promise<AudioCaptureOptions['processor'] | undefined> {
+    try {
+        const { DenoiseTrackProcessor } = await import('@cc-livekit/denoise-plugin');
+        if (DenoiseTrackProcessor.isSupported()) {
+            return new DenoiseTrackProcessor();
+        }
+        console.warn('Supressão de ruído avançada não é suportada neste navegador.');
+    } catch (err) {
+        console.error('Não foi possível carregar a supressão de ruído avançada:', err);
+    }
+    return undefined;
+}
+
+export async function enableMicrophone(localParticipant: LocalParticipant): Promise<{ advancedSuppressionActive: boolean }> {
+    const options = await getAudioCaptureOptions();
+    try {
+        await localParticipant.setMicrophoneEnabled(true, options);
+        return { advancedSuppressionActive: !!options.processor };
+    } catch (err) {
+        if (!options.processor) throw err;
+        console.error('Falha ao ativar o microfone com a supressão avançada, tentando sem ela:', err);
+        await localParticipant.setMicrophoneEnabled(true, { ...options, processor: undefined });
+        return { advancedSuppressionActive: false };
+    }
+}
+
+export async function applyAdvancedNoiseSuppressionToMicrophone(localParticipant: LocalParticipant): Promise<boolean> {
+    const track = localParticipant.getTrackPublication(Track.Source.Microphone)?.track;
+    if (!(track instanceof LocalAudioTrack)) return false;
+
+    if (!getAdvancedNoiseSuppressionPreference()) {
+        await track.stopProcessor().catch(console.error);
+        return false;
+    }
+
+    const processor = await createAdvancedNoiseSuppressionProcessor();
+    if (!processor) return false;
+    try {
+        await track.setProcessor(processor);
+        return true;
+    } catch (err) {
+        console.error('Não foi possível ativar a supressão avançada:', err);
+        return false;
+    }
 }
 
 type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop';

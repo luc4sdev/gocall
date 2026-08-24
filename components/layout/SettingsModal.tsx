@@ -8,9 +8,11 @@ import { LogOut, Loader2 } from 'lucide-react';
 
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validation/auth';
 import {
+    getAdvancedNoiseSuppressionPreference,
     getAudioInputDevicePreference,
     getAudioOutputDevicePreference,
     getNoiseSuppressionPreference,
+    setAdvancedNoiseSuppressionPreference,
     setAudioInputDevicePreference,
     setAudioOutputDevicePreference,
     setNoiseSuppressionPreference,
@@ -40,6 +42,7 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
     const [success, setSuccess] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
     const [noiseSuppression, setNoiseSuppression] = useState(getNoiseSuppressionPreference);
+    const [advancedNoiseSuppression, setAdvancedNoiseSuppression] = useState(getAdvancedNoiseSuppressionPreference);
     const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
     const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
     const [audioInputId, setAudioInputId] = useState(getAudioInputDevicePreference);
@@ -49,6 +52,12 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
         const next = !noiseSuppression;
         setNoiseSuppression(next);
         setNoiseSuppressionPreference(next);
+    };
+
+    const handleToggleAdvancedNoiseSuppression = () => {
+        const next = !advancedNoiseSuppression;
+        setAdvancedNoiseSuppression(next);
+        setAdvancedNoiseSuppressionPreference(next);
     };
 
     useEffect(() => {
@@ -150,18 +159,45 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-white/2 px-3 py-2.5">
                     <div className="min-w-0">
                         <p className="text-sm font-medium">Supressão de ruído</p>
-                        <p className="text-xs text-muted-foreground">Reduz ruídos de fundo captados pelo seu microfone.</p>
+                        <p className="text-xs text-muted-foreground">
+                            {advancedNoiseSuppression
+                                ? 'Desativada automaticamente enquanto a avançada estiver ligada.'
+                                : 'Reduz ruídos de fundo captados pelo seu microfone.'}
+                        </p>
                     </div>
                     <button
                         type="button"
                         role="switch"
-                        aria-checked={noiseSuppression}
+                        aria-checked={!advancedNoiseSuppression && noiseSuppression}
+                        disabled={advancedNoiseSuppression}
                         onClick={handleToggleNoiseSuppression}
-                        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 cursor-pointer ${noiseSuppression ? 'bg-[#FF6B4A]' : 'bg-white/15'
+                        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${!advancedNoiseSuppression && noiseSuppression ? 'bg-[#FF6B4A]' : 'bg-white/15'
                             }`}
                     >
                         <span
-                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${noiseSuppression ? 'translate-x-4' : 'translate-x-0'
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${!advancedNoiseSuppression && noiseSuppression ? 'translate-x-4' : 'translate-x-0'
+                                }`}
+                        />
+                    </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-white/2 px-3 py-2.5">
+                    <div className="min-w-0">
+                        <p className="text-sm font-medium">Supressão de ruído avançada (experimental)</p>
+                        <p className="text-xs text-muted-foreground">
+                            Modelo de rede neural (RNNoise), substitui a supressão padrão quando ativada.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={advancedNoiseSuppression}
+                        onClick={handleToggleAdvancedNoiseSuppression}
+                        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 cursor-pointer ${advancedNoiseSuppression ? 'bg-[#FF6B4A]' : 'bg-white/15'
+                            }`}
+                    >
+                        <span
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${advancedNoiseSuppression ? 'translate-x-4' : 'translate-x-0'
                                 }`}
                         />
                     </button>
