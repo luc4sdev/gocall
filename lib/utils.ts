@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { LocalAudioTrack, Track, type AudioCaptureOptions, type LocalParticipant } from "livekit-client"
+import { MicGainProcessor } from "./micGainProcessor"
 
 declare global {
     interface Window {
@@ -77,6 +78,22 @@ export function setAudioOutputDevicePreference(deviceId: string) {
 }
 
 
+const MIC_GAIN_KEY = 'gocall:micGain';
+export const MIC_GAIN_CHANGE_EVENT = 'gocall:mic-gain-change';
+export const DEFAULT_MIC_GAIN = 100;
+
+export function getMicGainPreference(): number {
+    if (typeof window === 'undefined') return DEFAULT_MIC_GAIN;
+    const stored = Number(window.localStorage.getItem(MIC_GAIN_KEY));
+    return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_MIC_GAIN;
+}
+
+export function setMicGainPreference(value: number) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(MIC_GAIN_KEY, String(value));
+    window.dispatchEvent(new Event(MIC_GAIN_CHANGE_EVENT));
+}
+
 const ACCENT_COLOR_KEY = 'gocall:accentColor';
 export const DEFAULT_ACCENT_COLOR = '#ff6b4a';
 const HEX_COLOR_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
@@ -136,30 +153,51 @@ export async function createAdvancedNoiseSuppressionProcessor(): Promise<AudioCa
 export async function enableMicrophone(localParticipant: LocalParticipant): Promise<{ advancedSuppressionActive: boolean }> {
     const options = await getAudioCaptureOptions();
     await localParticipant.setMicrophoneEnabled(true, options);
-    const advancedSuppressionActive = await applyAdvancedNoiseSuppressionToMicrophone(localParticipant);
+    const advancedSuppressionActive = await applyMicProcessingToMicrophone(localParticipant);
     return { advancedSuppressionActive };
 }
 
-export async function applyAdvancedNoiseSuppressionToMicrophone(localParticipant: LocalParticipant): Promise<boolean> {
+let activeMicGainProcessor: MicGainProcessor | undefined;
+let activeMicGainProcessorTrack: LocalAudioTrack | undefined;
+
+export async function applyMicProcessingToMicrophone(localParticipant: LocalParticipant): Promise<boolean> {
     const track = localParticipant.getTrackPublication(Track.Source.Microphone)?.track;
     if (!(track instanceof LocalAudioTrack)) return false;
 
-    if (!getAdvancedNoiseSuppressionPreference()) {
+    const gain = getMicGainPreference() / 100;
+    const wantsDenoise = getAdvancedNoiseSuppressionPreference();
+
+    if (gain === 1 && !wantsDenoise) {
+        activeMicGainProcessor = undefined;
+        activeMicGainProcessorTrack = undefined;
         await track.stopProcessor().catch(console.error);
         return false;
     }
 
-    const processor = await createAdvancedNoiseSuppressionProcessor();
-    if (!processor) return false;
+    if (
+        activeMicGainProcessorTrack === track &&
+        activeMicGainProcessor &&
+        activeMicGainProcessor.hasDenoise === wantsDenoise
+    ) {
+        activeMicGainProcessor.setGain(gain);
+        return wantsDenoise;
+    }
+
+    const denoiseProcessor = wantsDenoise ? await createAdvancedNoiseSuppressionProcessor() : undefined;
     try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (AudioContextClass) {
             track.setAudioContext(new AudioContextClass());
         }
-        await track.setProcessor(processor);
-        return true;
+        const chain = new MicGainProcessor(gain, denoiseProcessor);
+        await track.setProcessor(chain);
+        activeMicGainProcessor = chain;
+        activeMicGainProcessorTrack = track;
+        return Boolean(denoiseProcessor);
     } catch (err) {
-        console.error('Não foi possível ativar a supressão avançada:', err);
+        console.error('Não foi possível aplicar o processamento de microfone:', err);
+        activeMicGainProcessor = undefined;
+        activeMicGainProcessorTrack = undefined;
         return false;
     }
 }

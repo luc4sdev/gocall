@@ -14,12 +14,14 @@ import {
     getAdvancedNoiseSuppressionPreference,
     getAudioInputDevicePreference,
     getAudioOutputDevicePreference,
+    getMicGainPreference,
     getNoiseSuppressionPreference,
     normalizeHexColor,
     setAccentColorPreference,
     setAdvancedNoiseSuppressionPreference,
     setAudioInputDevicePreference,
     setAudioOutputDevicePreference,
+    setMicGainPreference,
     setNoiseSuppressionPreference,
 } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -60,6 +62,7 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
     const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
     const [audioInputId, setAudioInputId] = useState(getAudioInputDevicePreference);
     const [audioOutputId, setAudioOutputId] = useState(getAudioOutputDevicePreference);
+    const [micGain, setMicGain] = useState(getMicGainPreference);
     const [accentColor, setAccentColor] = useState(getAccentColorPreference);
     const [accentHexInput, setAccentHexInput] = useState(getAccentColorPreference);
     const [accentError, setAccentError] = useState(false);
@@ -107,6 +110,11 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
     const handleAudioOutputChange = (deviceId: string) => {
         setAudioOutputId(deviceId);
         setAudioOutputDevicePreference(deviceId);
+    };
+
+    const handleMicGainChange = (value: number) => {
+        setMicGain(value);
+        setMicGainPreference(value);
     };
 
     const accentDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,6 +331,25 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
                                     <p className="text-xs text-muted-foreground">
                                         Aplicado na hora se você já estiver numa chamada, ou na próxima vez que entrar.
                                     </p>
+                                </div>
+
+                                <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-white/6 bg-white/2 px-3 py-2.5">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium">Volume do microfone</p>
+                                            <p className="text-xs text-muted-foreground">Aumenta ou diminui o volume do seu áudio antes de enviar.</p>
+                                        </div>
+                                        <span className="shrink-0 text-xs font-medium text-[#8B8D93] tabular-nums">{micGain}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={200}
+                                        step={5}
+                                        value={micGain}
+                                        onChange={(e) => handleMicGainChange(Number(e.target.value))}
+                                        className="w-full accent-brand cursor-pointer"
+                                    />
                                 </div>
                             </>
                         )}

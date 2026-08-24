@@ -6,8 +6,9 @@ import { useConnectionState, useIsSpeaking, useLocalParticipant, useRoomContext 
 import {
     ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT,
     AUDIO_DEVICE_CHANGE_EVENT,
+    MIC_GAIN_CHANGE_EVENT,
     type AudioDeviceChangeDetail,
-    applyAdvancedNoiseSuppressionToMicrophone,
+    applyMicProcessingToMicrophone,
     enableMicrophone,
     getAdvancedNoiseSuppressionPreference,
     getAudioInputDevicePreference,
@@ -49,7 +50,7 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
 
                 if (!advancedSuppressionActive && getAdvancedNoiseSuppressionPreference()) {
                     const retry = () => {
-                        applyAdvancedNoiseSuppressionToMicrophone(localParticipant);
+                        applyMicProcessingToMicrophone(localParticipant);
                     };
                     window.addEventListener('pointerdown', retry, { once: true });
                     removeRetryListener = () => window.removeEventListener('pointerdown', retry);
@@ -87,12 +88,16 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
     useEffect(() => {
         if (connectionState !== ConnectionState.Connected) return;
 
-        const applyAdvanced = () => {
-            applyAdvancedNoiseSuppressionToMicrophone(localParticipant);
+        const reapply = () => {
+            applyMicProcessingToMicrophone(localParticipant);
         };
 
-        window.addEventListener(ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT, applyAdvanced);
-        return () => window.removeEventListener(ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT, applyAdvanced);
+        window.addEventListener(ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT, reapply);
+        window.addEventListener(MIC_GAIN_CHANGE_EVENT, reapply);
+        return () => {
+            window.removeEventListener(ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT, reapply);
+            window.removeEventListener(MIC_GAIN_CHANGE_EVENT, reapply);
+        };
     }, [connectionState, localParticipant]);
 
     useEffect(() => {
