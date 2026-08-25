@@ -76,7 +76,12 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                 },
                 resolution: option.preset.resolution,
                 contentHint: option.contentHint,
-            });
+            },
+                {
+                    screenShareEncoding: option.preset.encoding,
+                    videoCodec: 'h264',
+                }
+            );
         } catch (err) {
             console.error('Compartilhamento cancelado ou falhou', err);
         }
