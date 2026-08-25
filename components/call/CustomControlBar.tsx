@@ -69,7 +69,11 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
         setShowShareDialog(false);
         try {
             await localParticipant.setScreenShareEnabled(true, {
-                audio: true,
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                },
                 resolution: option.preset.resolution,
                 contentHint: option.contentHint,
             });
