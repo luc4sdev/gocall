@@ -39,7 +39,7 @@ const RESOLUTIONS = [
     {
         label: '1080p 60fps',
         description: 'Mais fluido — ideal para vídeos e jogos',
-        preset: new VideoPreset(1920, 1080, 12_000_000, 60, 'high'),
+        preset: new VideoPreset(1920, 1080, 15_000_000, 60, 'high'),
         contentHint: 'motion',
     },
     {
