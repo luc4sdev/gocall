@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { RoomEvent } from 'livekit-client';
+import { DisconnectReason, RoomEvent } from 'livekit-client';
 import { useRoomContext } from '@livekit/components-react';
 
 export function LobbyReconnectBridge({ onDisconnected }: { onDisconnected: () => void }) {
@@ -17,7 +17,12 @@ export function LobbyReconnectBridge({ onDisconnected }: { onDisconnected: () =>
             }
         };
 
-        const handleDisconnected = () => {
+        const handleDisconnected = (reason?: DisconnectReason) => {
+            if (reason === DisconnectReason.DUPLICATE_IDENTITY) {
+                attemptsRef.current = 0;
+                clearPending();
+                return;
+            }
             const delaySeconds = Math.min(2 ** attemptsRef.current, 30);
             attemptsRef.current += 1;
             clearPending();
