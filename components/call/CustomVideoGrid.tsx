@@ -11,9 +11,10 @@ import { Button } from '../ui/button';
 interface CustomVideoGridProps {
     theaterMode: boolean;
     onTheaterModeChange: (next: boolean) => void;
+    skipAutoPause?: boolean;
 }
 
-export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVideoGridProps) {
+export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPause = false }: CustomVideoGridProps) {
     const tracks = useTracks(
         [
             { source: Track.Source.Camera, withPlaceholder: true },
@@ -51,10 +52,14 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange }: CustomVide
         ),
         [screenShareTracks]
     );
+
+    const isInitialBatch = seenScreenShareKeys.size === 0;
     const newScreenShareKeys = [...remoteScreenShareKeys].filter((k) => !seenScreenShareKeys.has(k));
     if (newScreenShareKeys.length > 0) {
         setSeenScreenShareKeys(remoteScreenShareKeys);
-        setPausedKeys((prev) => new Set([...prev, ...newScreenShareKeys]));
+        if (!(isInitialBatch && skipAutoPause)) {
+            setPausedKeys((prev) => new Set([...prev, ...newScreenShareKeys]));
+        }
     }
 
     useEffect(() => {

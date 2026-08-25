@@ -12,9 +12,10 @@ interface VoiceRoomProps {
     theaterMode: boolean;
     onTheaterModeChange: (next: boolean) => void;
     channelName: string;
+    skipAutoPause?: boolean;
 }
 
-export function VoiceRoom({ onLeave, theaterMode, onTheaterModeChange, channelName }: VoiceRoomProps) {
+export function VoiceRoom({ onLeave, theaterMode, onTheaterModeChange, channelName, skipAutoPause }: VoiceRoomProps) {
     const connectionState = useConnectionState();
 
     if (connectionState !== ConnectionState.Connected) {
@@ -36,7 +37,7 @@ export function VoiceRoom({ onLeave, theaterMode, onTheaterModeChange, channelNa
         <div className="flex-1 flex flex-col min-h-0 bg-[#0B0C0D] relative">
             <div className="flex-1 min-h-0 flex">
                 <div className="flex-1 min-w-0 relative">
-                    <CustomVideoGrid theaterMode={theaterMode} onTheaterModeChange={onTheaterModeChange} />
+                    <CustomVideoGrid theaterMode={theaterMode} onTheaterModeChange={onTheaterModeChange} skipAutoPause={skipAutoPause} />
                 </div>
             </div>
 

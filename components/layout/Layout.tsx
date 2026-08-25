@@ -4,6 +4,7 @@ import { Participant } from 'livekit-client';
 import type { ChannelDTO } from '@/lib/types';
 import { SettingsModal } from './SettingsModal';
 import { MembersSidebar } from './MembersSidebar';
+import type { ScreenShareThumbnail } from './ScreenShareThumbnailBridge';
 import { CreateChannelDialog } from './CreateChannelDialog';
 import { DeleteChannelDialog } from './DeleteChannelDialog';
 import { Logo } from '@/components/Logo';
@@ -59,6 +60,8 @@ interface DiscordLayoutProps {
     activeParticipants?: Participant[];
     hideMembersSidebar?: boolean;
     voiceParticipantsSlotRef?: (el: HTMLDivElement | null) => void;
+    screenShareThumbnails?: Map<string, ScreenShareThumbnail>;
+    onWatchStream?: (channelId: string) => void;
 }
 
 export function Layout({
@@ -78,6 +81,8 @@ export function Layout({
     activeParticipants = [],
     hideMembersSidebar = false,
     voiceParticipantsSlotRef,
+    screenShareThumbnails,
+    onWatchStream,
 }: DiscordLayoutProps) {
     const [showSettings, setShowSettings] = useState(false);
     const [mobileView, setMobileView] = useState<'sidebar' | 'content'>('sidebar');
@@ -365,7 +370,13 @@ export function Layout({
 
             {!hideMembersSidebar && (
                 <div className="hidden lg:flex">
-                    <MembersSidebar participants={activeParticipants} localIdentity={localIdentity} channels={channels} />
+                    <MembersSidebar
+                        participants={activeParticipants}
+                        localIdentity={localIdentity}
+                        channels={channels}
+                        thumbnails={screenShareThumbnails}
+                        onWatchStream={onWatchStream}
+                    />
                 </div>
             )}
 
@@ -382,7 +393,13 @@ export function Layout({
                         >
                             <X size={18} />
                         </button>
-                        <MembersSidebar participants={activeParticipants} localIdentity={localIdentity} channels={channels} />
+                        <MembersSidebar
+                            participants={activeParticipants}
+                            localIdentity={localIdentity}
+                            channels={channels}
+                            thumbnails={screenShareThumbnails}
+                            onWatchStream={onWatchStream}
+                        />
                     </div>
                 </div>
             )}

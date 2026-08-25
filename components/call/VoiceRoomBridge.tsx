@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { ConnectionState } from 'livekit-client';
+import { ConnectionState, LocalVideoTrack, Track } from 'livekit-client';
 import { useConnectionState, useIsSpeaking, useLocalParticipant, useRoomContext } from '@livekit/components-react';
 import {
     ADVANCED_NOISE_SUPPRESSION_CHANGE_EVENT,
@@ -15,7 +15,10 @@ import {
     getAudioOutputDevicePreference,
     playSound,
 } from '@/lib/utils';
+import { captureVideoTrackThumbnail } from '@/components/layout/ScreenShareThumbnailBridge';
 import { useParticipantAudio } from './ParticipantAudioContext';
+
+const THUMBNAIL_INTERVAL_MS = 5 * 60 * 1000;
 
 export interface VoiceControlState {
     isMicrophoneEnabled: boolean;
@@ -27,7 +30,13 @@ export interface VoiceControlState {
 }
 
 
-export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: VoiceControlState) => void }) {
+export function VoiceRoomBridge({
+    onStateChange,
+    onThumbnail,
+}: {
+    onStateChange: (state: VoiceControlState) => void;
+    onThumbnail?: (dataUrl: string) => void;
+}) {
     const { localParticipant, isMicrophoneEnabled, isScreenShareEnabled } = useLocalParticipant();
 
     const isSpeaking = useIsSpeaking(localParticipant);
@@ -123,6 +132,21 @@ export function VoiceRoomBridge({ onStateChange }: { onStateChange: (state: Voic
         onStateChange({ isMicrophoneEnabled, isScreenShareEnabled, isSpeaking, isDeafened, toggleMic, toggleDeafen });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isMicrophoneEnabled, isScreenShareEnabled, isSpeaking, isDeafened, localParticipant]);
+
+    useEffect(() => {
+        if (!isScreenShareEnabled || !onThumbnail) return;
+
+        const capture = async () => {
+            const track = localParticipant.getTrackPublication(Track.Source.ScreenShare)?.track;
+            if (!(track instanceof LocalVideoTrack) || !track.mediaStreamTrack) return;
+            const dataUrl = await captureVideoTrackThumbnail(track.mediaStreamTrack);
+            if (dataUrl) onThumbnail(dataUrl);
+        };
+
+        capture();
+        const interval = setInterval(capture, THUMBNAIL_INTERVAL_MS);
+        return () => clearInterval(interval);
+    }, [isScreenShareEnabled, localParticipant, onThumbnail]);
 
     return null;
 }

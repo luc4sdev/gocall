@@ -18,6 +18,7 @@ import { VoiceParticipantsList } from '@/components/call/VoiceParticipantsList';
 import { ChatBridge, type ChatBridgeState } from '@/components/chat/ChatBridge';
 import { ChannelSyncBridge, type BroadcastChannelSync, type ChannelSyncMessage } from '@/components/layout/ChannelSyncBridge';
 import { LobbyReconnectBridge } from '@/components/layout/LobbyReconnectBridge';
+import { ScreenShareThumbnailBridge, type ScreenShareThumbnail } from '@/components/layout/ScreenShareThumbnailBridge';
 import type { ServerDTO, ChannelDTO } from '@/lib/types';
 
 const ROOM_OPTIONS: RoomOptions = { dynacast: true };
@@ -50,6 +51,9 @@ export function HomeClient({ username }: { username: string }) {
   const [voiceParticipantsSlot, setVoiceParticipantsSlot] = useState<HTMLDivElement | null>(null);
   const [chatBridge, setChatBridge] = useState<ChatBridgeState | null>(null);
   const broadcastChannelSyncRef = useRef<BroadcastChannelSync | null>(null);
+  const [localThumbnail, setLocalThumbnail] = useState<string | null>(null);
+  const [screenShareThumbnails, setScreenShareThumbnails] = useState<Map<string, ScreenShareThumbnail>>(new Map());
+  const [skipAutoPauseOnJoin, setSkipAutoPauseOnJoin] = useState(false);
 
   const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || "";
 
@@ -58,6 +62,12 @@ export function HomeClient({ username }: { username: string }) {
     setVoiceToken(null);
     setVoiceState(null);
     setTheaterMode(false);
+    setLocalThumbnail(null);
+    setSkipAutoPauseOnJoin(false);
+  }, []);
+
+  const handleReceiveThumbnail = useCallback((thumbnail: ScreenShareThumbnail) => {
+    setScreenShareThumbnails((prev) => new Map(prev).set(thumbnail.identity, thumbnail));
   }, []);
 
   const handleJoinVoice = useCallback(async (channel: ChannelDTO): Promise<boolean> => {
@@ -85,6 +95,14 @@ export function HomeClient({ username }: { username: string }) {
       return false;
     }
   }, []);
+
+  const handleWatchStream = useCallback((channelId: string) => {
+    const channel = server?.channels.find((c) => c.id === channelId && c.type === 'VOICE');
+    if (!channel) return;
+    setActiveChannel(channelId);
+    setSkipAutoPauseOnJoin(true);
+    handleJoinVoice(channel);
+  }, [server, handleJoinVoice]);
 
   const applyChannelCreated = useCallback((channel: ChannelDTO) => {
     setServer((prev) => {
@@ -240,6 +258,7 @@ export function HomeClient({ username }: { username: string }) {
       />
       <ChatBridge onChange={setChatBridge} />
       <ChannelSyncBridge onMessage={handleChannelSyncMessage} onReady={handleBroadcastReady} />
+      <ScreenShareThumbnailBridge thumbnail={localThumbnail} onReceive={handleReceiveThumbnail} />
 
       <Layout
         serverName={server.name}
@@ -257,6 +276,8 @@ export function HomeClient({ username }: { username: string }) {
         activeParticipants={participants}
         hideMembersSidebar={isViewingOwnCall && theaterMode}
         voiceParticipantsSlotRef={setVoiceParticipantsSlot}
+        screenShareThumbnails={screenShareThumbnails}
+        onWatchStream={handleWatchStream}
       >
         <div className="h-14 px-3 sm:px-5 flex items-center min-w-0 border-b border-white/4 bg-[#16171A] shrink-0 z-10">
           {activeChannelData?.type === 'TEXT' ? <Hash size={20} className="text-[#63656B] mr-2 shrink-0" /> : <Volume2 size={20} className="text-[#63656B] mr-2 shrink-0" />}
@@ -278,7 +299,10 @@ export function HomeClient({ username }: { username: string }) {
             <VoiceChannelGate
               key={activeChannelData.id}
               channelName={activeChannelData.name}
-              onJoin={() => handleJoinVoice(activeChannelData)}
+              onJoin={() => {
+                setSkipAutoPauseOnJoin(false);
+                return handleJoinVoice(activeChannelData);
+              }}
             />
           ) : null}
         </div>
@@ -296,7 +320,7 @@ export function HomeClient({ username }: { username: string }) {
               className="flex-1 flex flex-col min-h-0"
             >
               <ParticipantAudioProvider>
-                <VoiceRoomBridge onStateChange={setVoiceState} />
+                <VoiceRoomBridge onStateChange={setVoiceState} onThumbnail={setLocalThumbnail} />
                 <RoomAudioRenderer />
                 <CallPresenceSounds />
                 <VoiceRoom
@@ -304,6 +328,7 @@ export function HomeClient({ username }: { username: string }) {
                   theaterMode={theaterMode}
                   onTheaterModeChange={setTheaterMode}
                   channelName={voiceChannel.name}
+                  skipAutoPause={skipAutoPauseOnJoin}
                 />
                 {voiceParticipantsSlot && createPortal(<VoiceParticipantsList />, voiceParticipantsSlot)}
               </ParticipantAudioProvider>

@@ -1,11 +1,14 @@
-import { Radio } from 'lucide-react';
+import { Eye, Radio } from 'lucide-react';
 import { Participant } from 'livekit-client';
 import type { ChannelDTO } from '@/lib/types';
+import type { ScreenShareThumbnail } from './ScreenShareThumbnailBridge';
 
 interface MembersSidebarProps {
     participants: Participant[];
     localIdentity: string;
     channels: ChannelDTO[];
+    thumbnails?: Map<string, ScreenShareThumbnail>;
+    onWatchStream?: (channelId: string) => void;
 }
 
 interface Member {
@@ -26,7 +29,43 @@ function LiveBadge() {
     );
 }
 
-function MemberRow({ member }: { member: Member }) {
+function MemberRow({
+    member,
+    thumbnail,
+    onWatchStream,
+}: {
+    member: Member;
+    thumbnail?: ScreenShareThumbnail;
+    onWatchStream?: () => void;
+}) {
+    if (member.screenSharing && !member.isLocal && thumbnail && onWatchStream) {
+        return (
+            <div className="px-1 py-1.5 rounded-lg">
+                <div className="flex items-center gap-2 px-2 mb-1.5 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-[#2A2D35] flex items-center justify-center text-[10px] font-medium overflow-hidden shrink-0">
+                        {member.name[0]?.toUpperCase()}
+                    </div>
+                    <span className="text-[13px] text-[#B4B6BB] truncate flex-1 min-w-0">
+                        {member.name}
+                    </span>
+                    <LiveBadge />
+                </div>
+                <button
+                    onClick={onWatchStream}
+                    className="relative w-full aspect-video rounded-lg overflow-hidden border border-white/8 group/thumb cursor-pointer"
+                    title={`Assistir a transmissão de ${member.name}`}
+                >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={thumbnail.dataUrl} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                        <Eye size={16} className="text-white" />
+                        <span className="text-[12px] font-semibold text-white">Assistir</span>
+                    </div>
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer min-w-0">
             <div className="relative shrink-0">
@@ -48,7 +87,7 @@ function MemberRow({ member }: { member: Member }) {
     );
 }
 
-export function MembersSidebar({ participants, localIdentity, channels }: MembersSidebarProps) {
+export function MembersSidebar({ participants, localIdentity, channels, thumbnails, onWatchStream }: MembersSidebarProps) {
     const members: Member[] = participants.map((p) => ({
         identity: p.identity,
         name: p.name || p.identity,
@@ -91,7 +130,12 @@ export function MembersSidebar({ participants, localIdentity, channels }: Member
                                         {channelName}
                                     </div>
                                     {groupMembers.sort((a, b) => Number(b.screenSharing) - Number(a.screenSharing)).map((m) => (
-                                        <MemberRow key={m.identity} member={m} />
+                                        <MemberRow
+                                            key={m.identity}
+                                            member={m}
+                                            thumbnail={thumbnails?.get(m.identity)}
+                                            onWatchStream={onWatchStream && m.voiceChannelId ? () => onWatchStream(m.voiceChannelId!) : undefined}
+                                        />
                                     ))}
                                 </div>
                             );
