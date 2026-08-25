@@ -90,7 +90,7 @@ export function MembersSidebar({ participants, localIdentity, channels }: Member
                                     <div className="mb-1 px-3 text-[11px] font-medium text-[#63656B]">
                                         {channelName}
                                     </div>
-                                    {groupMembers.map((m) => (
+                                    {groupMembers.sort((a, b) => Number(b.screenSharing) - Number(a.screenSharing)).map((m) => (
                                         <MemberRow key={m.identity} member={m} />
                                     ))}
                                 </div>
