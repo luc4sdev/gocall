@@ -21,7 +21,9 @@ export function VoiceParticipantsList() {
     const { isMuted } = useParticipantAudio();
     const [openVolumeIdentity, setOpenVolumeIdentity] = useState<string | null>(null);
 
-    const others = participants.filter((p) => p.identity !== localParticipant.identity);
+    const others = participants
+        .filter((p) => p.identity !== localParticipant.identity)
+        .sort((a, b) => Number(b.isScreenShareEnabled) - Number(a.isScreenShareEnabled));
 
     return (
         <>

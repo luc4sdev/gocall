@@ -193,7 +193,9 @@ export function Layout({
                     </div>
                     {voiceChannels.map((channel) => {
                         const isMyChannel = voiceChannelId === channel.id;
-                        const otherMembers = callParticipantsByChannel.get(channel.id) ?? [];
+                        const otherMembers = [...(callParticipantsByChannel.get(channel.id) ?? [])].sort(
+                            (a, b) => Number(b.attributes?.screenSharing === 'true') - Number(a.attributes?.screenSharing === 'true')
+                        );
                         const showCallSection = (isMyChannel && isInRoom) || otherMembers.length > 0;
                         const callStartedAt = callStartedAtByChannel.get(channel.id);
 
