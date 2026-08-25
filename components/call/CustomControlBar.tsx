@@ -78,7 +78,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                 contentHint: option.contentHint,
             },
                 {
-                    videoEncoding: option.preset.encoding,
+                    screenShareEncoding: option.preset.encoding,
                     videoCodec: 'av1',
                 }
             );
