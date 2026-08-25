@@ -70,7 +70,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
         try {
             await localParticipant.setScreenShareEnabled(true, {
                 audio: {
-                    echoCancellation: false,
+                    echoCancellation: true,
                     noiseSuppression: false,
                     autoGainControl: false,
                 },
