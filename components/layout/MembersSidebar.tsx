@@ -9,6 +9,7 @@ interface MembersSidebarProps {
     channels: ChannelDTO[];
     thumbnails?: Map<string, ScreenShareThumbnail>;
     onWatchStream?: (channelId: string) => void;
+    myVoiceChannelId?: string | null;
 }
 
 interface Member {
@@ -87,7 +88,7 @@ function MemberRow({
     );
 }
 
-export function MembersSidebar({ participants, localIdentity, channels, thumbnails, onWatchStream }: MembersSidebarProps) {
+export function MembersSidebar({ participants, localIdentity, channels, thumbnails, onWatchStream, myVoiceChannelId }: MembersSidebarProps) {
     const members: Member[] = participants.map((p) => ({
         identity: p.identity,
         name: p.name || p.identity,
@@ -124,6 +125,7 @@ export function MembersSidebar({ participants, localIdentity, channels, thumbnai
                         </div>
                         {Array.from(callGroups.entries()).map(([channelId, groupMembers]) => {
                             const channelName = channels.find((c) => c.id === channelId)?.name ?? 'Chamada';
+                            const isMyChannel = channelId === myVoiceChannelId;
                             return (
                                 <div key={channelId || 'unknown'} className="mb-3 last:mb-0">
                                     <div className="mb-1 px-3 text-[11px] font-medium text-[#63656B]">
@@ -133,8 +135,8 @@ export function MembersSidebar({ participants, localIdentity, channels, thumbnai
                                         <MemberRow
                                             key={m.identity}
                                             member={m}
-                                            thumbnail={thumbnails?.get(m.identity)}
-                                            onWatchStream={onWatchStream && m.voiceChannelId ? () => onWatchStream(m.voiceChannelId!) : undefined}
+                                            thumbnail={isMyChannel ? undefined : thumbnails?.get(m.identity)}
+                                            onWatchStream={!isMyChannel && onWatchStream && m.voiceChannelId ? () => onWatchStream(m.voiceChannelId!) : undefined}
                                         />
                                     ))}
                                 </div>

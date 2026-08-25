@@ -376,6 +376,7 @@ export function Layout({
                         channels={channels}
                         thumbnails={screenShareThumbnails}
                         onWatchStream={onWatchStream}
+                        myVoiceChannelId={isInRoom ? voiceChannelId : null}
                     />
                 </div>
             )}
@@ -399,6 +400,7 @@ export function Layout({
                             channels={channels}
                             thumbnails={screenShareThumbnails}
                             onWatchStream={onWatchStream}
+                            myVoiceChannelId={isInRoom ? voiceChannelId : null}
                         />
                     </div>
                 </div>
