@@ -1,7 +1,7 @@
 'use client';
 
 import { Volume2, VolumeX } from 'lucide-react';
-import { useParticipantAudio } from './ParticipantAudioContext';
+import { MAX_VOLUME, useParticipantAudio } from './ParticipantAudioContext';
 import { cn } from '@/lib/utils';
 
 interface ParticipantVolumePanelProps {
@@ -36,7 +36,7 @@ export function ParticipantVolumePanel({ volumeKey, name, className, muteLabel =
             <input
                 type="range"
                 min={0}
-                max={100}
+                max={MAX_VOLUME * 100}
                 step={1}
                 value={Math.round(volume * 100)}
                 disabled={muted}

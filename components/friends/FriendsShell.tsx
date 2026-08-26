@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useAppContext } from '@/components/AppContext';
 import { FriendsSidebar } from './FriendsSidebar';
 import { FriendsView } from './FriendsView';
+import { FriendsCallSidebar } from './FriendsCallSidebar';
 import { useFriendsData } from './useFriendsData';
 
 export function FriendsShell() {
@@ -38,6 +39,7 @@ export function FriendsShell() {
                 outgoingRequests={data?.outgoingRequests ?? []}
                 onRefresh={refresh}
             />
+            <FriendsCallSidebar friends={friends} />
         </>
     );
 }

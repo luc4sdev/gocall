@@ -77,6 +77,10 @@ export function ServerShell({ children, serverId, serverName, initialChannels }:
     const hideMembersSidebar = isViewingOwnCall && theaterMode;
 
     const [channels, setChannels] = useState<ChannelDTO[]>(initialChannels);
+    const channelsRef = useRef(channels);
+    useEffect(() => {
+        channelsRef.current = channels;
+    }, [channels]);
     const [mobileView, setMobileView] = useState<'sidebar' | 'content'>('sidebar');
     const [showMembersMobile, setShowMembersMobile] = useState(false);
     const [createChannelType, setCreateChannelType] = useState<'TEXT' | 'VOICE' | null>(null);
@@ -117,14 +121,13 @@ export function ServerShell({ children, serverId, serverName, initialChannels }:
 
     const applyChannelDeleted = useCallback(
         (channelId: string) => {
-            setChannels((prev) => {
-                const remaining = prev.filter((c) => c.id !== channelId);
-                if (activeChannelId === channelId) {
-                    const fallback = remaining.find((c) => c.type === 'TEXT') ?? remaining[0];
-                    router.push(fallback ? `/servers/${serverId}/channels/${fallback.id}` : `/servers/${serverId}`);
-                }
-                return remaining;
-            });
+            setChannels((prev) => prev.filter((c) => c.id !== channelId));
+
+            if (activeChannelId === channelId) {
+                const remaining = channelsRef.current.filter((c) => c.id !== channelId);
+                const fallback = remaining.find((c) => c.type === 'TEXT') ?? remaining[0];
+                router.push(fallback ? `/servers/${serverId}/channels/${fallback.id}` : `/servers/${serverId}`);
+            }
             if (voiceChannel?.id === channelId) {
                 onLeaveVoice();
             }

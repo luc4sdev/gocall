@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { prisma } from '@/lib/prisma';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { ChannelView } from '@/components/layout/ChannelView';
+import { getCachedChannel } from '@/lib/serverData';
 import type { ChannelDTO } from '@/lib/types';
 
 export default async function ChannelPage({
@@ -19,7 +19,7 @@ export default async function ChannelPage({
         notFound();
     }
 
-    const channel = await prisma.channel.findUnique({ where: { id: channelId } });
+    const channel = await getCachedChannel(channelId);
 
     if (!channel || channel.serverId !== serverId) {
         notFound();

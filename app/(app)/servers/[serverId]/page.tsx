@@ -1,13 +1,10 @@
 import { redirect, notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { getCachedServerWithChannels } from '@/lib/serverData';
 
 export default async function ServerPage({ params }: { params: Promise<{ serverId: string }> }) {
     const { serverId } = await params;
 
-    const server = await prisma.server.findUnique({
-        where: { id: serverId },
-        include: { channels: { orderBy: { createdAt: 'asc' } } },
-    });
+    const server = await getCachedServerWithChannels(serverId);
 
     if (!server) {
         notFound();

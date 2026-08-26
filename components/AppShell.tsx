@@ -16,11 +16,17 @@ import { LobbyPresence } from '@/components/call/LobbyPresence';
 import { VoiceRoomBridge, type VoiceControlState } from '@/components/call/VoiceRoomBridge';
 import { LobbyReconnectBridge } from '@/components/layout/LobbyReconnectBridge';
 import { ScreenShareThumbnailBridge, type ScreenShareThumbnail } from '@/components/layout/ScreenShareThumbnailBridge';
-import { AppContext, type AppContextValue } from '@/components/AppContext';
+import { AppContext, type AppContextValue, type ScreenShareViewState } from '@/components/AppContext';
 import { cn } from '@/lib/utils';
 import type { ChannelDTO } from '@/lib/types';
 
-const ROOM_OPTIONS: RoomOptions = { dynacast: true };
+const ROOM_OPTIONS: RoomOptions = { dynacast: true, webAudioMix: true };
+
+const EMPTY_SCREEN_SHARE_VIEW_STATE: ScreenShareViewState = {
+    pausedKeys: new Set(),
+    seenKeys: new Set(),
+    focusedKey: null,
+};
 
 function ParticipantsSpy({ onChange }: { onChange: (p: Participant[]) => void }) {
     const participants = useParticipants();
@@ -54,6 +60,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
     const [theaterMode, setTheaterMode] = useState(false);
     const [localThumbnail, setLocalThumbnail] = useState<string | null>(null);
     const [screenShareThumbnails, setScreenShareThumbnails] = useState<Map<string, ScreenShareThumbnail>>(new Map());
+    const [screenShareViewState, setScreenShareViewState] = useState<ScreenShareViewState>(EMPTY_SCREEN_SHARE_VIEW_STATE);
     const [skipAutoPauseOnJoin, setSkipAutoPauseOnJoin] = useState(false);
     const voiceTokenCacheRef = useRef<Map<string, string>>(new Map());
 
@@ -70,6 +77,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         setTheaterMode(false);
         setLocalThumbnail(null);
         setSkipAutoPauseOnJoin(false);
+        setScreenShareViewState(EMPTY_SCREEN_SHARE_VIEW_STATE);
     }, []);
 
     const handleJoinVoice = useCallback(async (channel: ChannelDTO): Promise<boolean> => {
@@ -218,6 +226,8 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         .filter((p) => p.identity !== localIdentity && p.attributes?.screenSharing === 'true' && !screenShareThumbnails.has(p.identity))
         .map((p) => p.identity);
 
+    const homeServerInCall = participants.filter((p) => p.attributes?.inCall === 'true');
+
     const contextValue: AppContextValue = {
         username,
         localIdentity,
@@ -230,6 +240,8 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         onLeaveVoice: handleLeaveVoice,
         localThumbnail,
         screenShareThumbnails,
+        screenShareViewState,
+        setScreenShareViewState,
         skipAutoPauseOnJoin,
         setSkipAutoPauseOnJoin,
         registerVoiceRoomSlot,
@@ -293,6 +305,35 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
                         <div className="w-11 h-11 rounded-2xl bg-[#1F2023] flex items-center justify-center transition-colors group-hover:bg-[#26282c]">
                             <Logo className="w-6 h-6" />
                         </div>
+
+                        {homeServerInCall.length > 0 && (
+                            <span className="absolute -bottom-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-brand ring-2 ring-[#0B0C0D] text-[9px] font-bold text-white flex items-center justify-center">
+                                {homeServerInCall.length}
+                            </span>
+                        )}
+
+                        {homeServerInCall.length > 0 && (
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity pointer-events-none">
+                                <div className="bg-[#16171A] border border-white/8 rounded-xl shadow-lg px-3 py-2.5 whitespace-nowrap">
+                                    <p className="text-[10px] font-medium text-[#8B8D93] uppercase tracking-wider mb-1.5">
+                                        Em chamada — {homeServerName}
+                                    </p>
+                                    <div className="flex flex-col gap-1.5">
+                                        {homeServerInCall.slice(0, 6).map((p) => (
+                                            <div key={p.identity} className="flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded-full bg-[#2A2D35] flex items-center justify-center text-[10px] font-medium shrink-0">
+                                                    {(p.name || p.identity)[0]?.toUpperCase()}
+                                                </div>
+                                                <span className="text-[12px] text-[#EDEBE7]">{p.name || p.identity}</span>
+                                            </div>
+                                        ))}
+                                        {homeServerInCall.length > 6 && (
+                                            <p className="text-[11px] text-[#63656B]">+{homeServerInCall.length - 6} mais</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </Link>
                 </div>
 
@@ -300,42 +341,42 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
                     <div className="flex-1 flex min-w-0 min-h-0">
                         {children}
                     </div>
+
+                    <div ref={setVoiceRoomFallback} className="hidden" />
+
+                    {isConnectedToVoice && (
+                        <LiveKitRoom
+                            key={voiceChannel.id}
+                            video={false}
+                            audio={false}
+                            token={voiceToken!}
+                            serverUrl={liveKitUrl}
+                            options={ROOM_OPTIONS}
+                            className="contents"
+                        >
+                            <ParticipantAudioProvider>
+                                <VoiceRoomBridge onStateChange={setVoiceState} onThumbnail={setLocalThumbnail} />
+                                <RoomAudioRenderer />
+                                <CallPresenceSounds />
+                                {videoPortalTarget && createPortal(
+                                    <VoiceRoom
+                                        onLeave={handleLeaveVoice}
+                                        theaterMode={theaterMode}
+                                        onTheaterModeChange={setTheaterMode}
+                                        channelName={voiceChannel.name}
+                                        skipAutoPause={skipAutoPauseOnJoin}
+                                    />,
+                                    videoPortalTarget
+                                )}
+                                {voiceParticipantsSlot && createPortal(<VoiceParticipantsList />, voiceParticipantsSlot)}
+                            </ParticipantAudioProvider>
+                            <StartAudio
+                                label="Clique para ativar o áudio"
+                                className="fixed! top-auto! bottom-5! left-1/2! w-auto! -translate-x-1/2! transform-none! z-50! bg-brand! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-brand-hover! transition-colors"
+                            />
+                        </LiveKitRoom>
+                    )}
                 </AppContext.Provider>
-
-                <div ref={setVoiceRoomFallback} className="hidden" />
-
-                {isConnectedToVoice && (
-                    <LiveKitRoom
-                        key={voiceChannel.id}
-                        video={false}
-                        audio={false}
-                        token={voiceToken!}
-                        serverUrl={liveKitUrl}
-                        options={ROOM_OPTIONS}
-                        className="contents"
-                    >
-                        <ParticipantAudioProvider>
-                            <VoiceRoomBridge onStateChange={setVoiceState} onThumbnail={setLocalThumbnail} />
-                            <RoomAudioRenderer />
-                            <CallPresenceSounds />
-                            {videoPortalTarget && createPortal(
-                                <VoiceRoom
-                                    onLeave={handleLeaveVoice}
-                                    theaterMode={theaterMode}
-                                    onTheaterModeChange={setTheaterMode}
-                                    channelName={voiceChannel.name}
-                                    skipAutoPause={skipAutoPauseOnJoin}
-                                />,
-                                videoPortalTarget
-                            )}
-                            {voiceParticipantsSlot && createPortal(<VoiceParticipantsList />, voiceParticipantsSlot)}
-                        </ParticipantAudioProvider>
-                        <StartAudio
-                            label="Clique para ativar o áudio"
-                            className="fixed! top-auto! bottom-5! left-1/2! w-auto! -translate-x-1/2! transform-none! z-50! bg-brand! text-[#0F1012]! font-semibold! text-sm! py-2.5! px-5! rounded-xl! shadow-lg! hover:bg-brand-hover! transition-colors"
-                        />
-                    </LiveKitRoom>
-                )}
             </LiveKitRoom>
         </div>
     );

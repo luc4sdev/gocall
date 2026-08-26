@@ -3,6 +3,7 @@ import { RemoteTrackPublication, Track } from 'livekit-client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, Maximize, PanelRightClose, PanelRightOpen, Volume2, VolumeX } from 'lucide-react';
 import { GridLayout } from '@livekit/components-react';
+import { useAppContext } from '@/components/AppContext';
 import { CustomParticipantTile } from './CustomParticipantTile';
 import { getScreenShareVolumeKey, useParticipantAudio } from './ParticipantAudioContext';
 import { ParticipantVolumePanel } from './ParticipantVolumePanel';
@@ -28,8 +29,18 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPaus
         [tracks]
     );
 
-    const [focusedKey, setFocusedKey] = useState<string | null>(null);
-    const [pausedKeys, setPausedKeys] = useState<Set<string>>(new Set());
+    const { screenShareViewState, setScreenShareViewState } = useAppContext();
+    const { pausedKeys, seenKeys: seenScreenShareKeys, focusedKey } = screenShareViewState;
+
+    const setFocusedKey = (key: string | null) => {
+        setScreenShareViewState((prev) => ({ ...prev, focusedKey: key }));
+    };
+    const setPausedKeys = (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+        setScreenShareViewState((prev) => ({
+            ...prev,
+            pausedKeys: typeof updater === 'function' ? updater(prev.pausedKeys) : updater,
+        }));
+    };
     const [volumeOpen, setVolumeOpen] = useState(false);
     const volumeRef = useRef<HTMLDivElement>(null);
     const { isMuted } = useParticipantAudio();
@@ -45,7 +56,6 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPaus
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [volumeOpen]);
 
-    const [seenScreenShareKeys, setSeenScreenShareKeys] = useState<Set<string>>(new Set());
     const remoteScreenShareKeys = useMemo(
         () => new Set(
             screenShareTracks.filter((t) => !t.participant.isLocal).map((t) => `${t.participant.identity}-${t.source}`)
@@ -53,14 +63,24 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPaus
         [screenShareTracks]
     );
 
-    const isInitialBatch = seenScreenShareKeys.size === 0;
-    const newScreenShareKeys = [...remoteScreenShareKeys].filter((k) => !seenScreenShareKeys.has(k));
-    if (newScreenShareKeys.length > 0) {
-        setSeenScreenShareKeys(remoteScreenShareKeys);
-        if (!(isInitialBatch && skipAutoPause)) {
-            setPausedKeys((prev) => new Set([...prev, ...newScreenShareKeys]));
-        }
-    }
+    useEffect(() => {
+        const isInitialBatch = seenScreenShareKeys.size === 0;
+        const newScreenShareKeys = [...remoteScreenShareKeys].filter((k) => !seenScreenShareKeys.has(k));
+        if (newScreenShareKeys.length === 0) return;
+
+        setScreenShareViewState((prev) => {
+            const nextSeen = new Set(prev.seenKeys);
+            for (const key of remoteScreenShareKeys) nextSeen.add(key);
+
+            let nextPaused = prev.pausedKeys;
+            if (!(isInitialBatch && skipAutoPause)) {
+                nextPaused = new Set(prev.pausedKeys);
+                for (const key of newScreenShareKeys) nextPaused.add(key);
+            }
+
+            return { ...prev, seenKeys: nextSeen, pausedKeys: nextPaused };
+        });
+    }, [remoteScreenShareKeys, seenScreenShareKeys, skipAutoPause, setScreenShareViewState]);
 
     useEffect(() => {
         for (const t of screenShareTracks) {

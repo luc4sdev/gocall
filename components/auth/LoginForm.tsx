@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { loginSchema, type LoginInput } from '@/lib/validation/auth';
+import { notify } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,7 +17,6 @@ import { Logo } from '@/components/Logo';
 
 export function LoginForm() {
     const router = useRouter();
-    const [serverError, setServerError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
     const form = useForm<LoginInput>({
@@ -25,7 +25,6 @@ export function LoginForm() {
     });
 
     const onSubmit = async (data: LoginInput) => {
-        setServerError('');
         try {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
@@ -34,13 +33,13 @@ export function LoginForm() {
             });
             const result = await res.json();
             if (!res.ok) {
-                setServerError(result.error || 'Não foi possível entrar.');
+                notify.error(result.error || 'Não foi possível entrar.');
                 return;
             }
             router.push('/');
             router.refresh();
         } catch {
-            setServerError('Falha na conexão com o servidor.');
+            notify.error('Falha na conexão com o servidor.');
         }
     };
 
@@ -90,8 +89,6 @@ export function LoginForm() {
                                 </FormItem>
                             )}
                         />
-
-                        {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 
                         <Button type="submit" disabled={form.formState.isSubmitting} className="mt-2 cursor-pointer">
                             {form.formState.isSubmitting && <Loader2 className="animate-spin" />}

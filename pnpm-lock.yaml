@@ -59,6 +59,9 @@ dependencies:
   react-hook-form:
     specifier: ^7.86.0
     version: 7.86.0(react@19.2.8)
+  react-toastify:
+    specifier: ^11.1.0
+    version: 11.1.0(react-dom@19.2.8)(react@19.2.8)
   shadcn:
     specifier: ^4.19.0
     version: 4.19.0(typescript@5.9.3)
@@ -5734,6 +5737,17 @@ packages:
   /react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
     dev: true
+
+  /react-toastify@11.1.0(react-dom@19.2.8)(react@19.2.8):
+    resolution: {integrity: sha512-e9h23x3phN0wbFeB6yovmWp7lobzV4CaCH0LO8nVP6H7Y+3GbcLpIzMm9dJhcp1RXbpyfvjgpfXqO80QAmn7sg==}
+    peerDependencies:
+      react: ^18 || ^19
+      react-dom: ^18 || ^19
+    dependencies:
+      clsx: 2.1.1
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+    dev: false
 
   /react@19.2.8:
     resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}

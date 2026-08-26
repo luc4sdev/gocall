@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { LogOut, Loader2, Mic, Palette, UserRound } from 'lucide-react';
 
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validation/auth';
+import { notify } from '@/lib/toast';
 import {
     DEFAULT_ACCENT_COLOR,
     cn,
@@ -53,8 +54,6 @@ type TabId = (typeof TABS)[number]['id'];
 export function SettingsModal({ open, onOpenChange, username }: SettingsModalProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabId>('audio');
-    const [serverError, setServerError] = useState('');
-    const [success, setSuccess] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
     const [noiseSuppression, setNoiseSuppression] = useState(getNoiseSuppressionPreference);
     const [advancedNoiseSuppression, setAdvancedNoiseSuppression] = useState(getAdvancedNoiseSuppressionPreference);
@@ -162,8 +161,6 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
     });
 
     const onSubmit = async (data: ChangePasswordInput) => {
-        setServerError('');
-        setSuccess(false);
         try {
             const res = await fetch('/api/auth/change-password', {
                 method: 'POST',
@@ -172,13 +169,13 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
             });
             const result = await res.json();
             if (!res.ok) {
-                setServerError(result.error || 'Não foi possível alterar a senha.');
+                notify.error(result.error || 'Não foi possível alterar a senha.');
                 return;
             }
-            setSuccess(true);
+            notify.success('Senha alterada com sucesso.');
             form.reset();
         } catch {
-            setServerError('Falha na conexão com o servidor.');
+            notify.error('Falha na conexão com o servidor.');
         }
     };
 
@@ -206,11 +203,7 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
             open={open}
             onOpenChange={(next) => {
                 onOpenChange(next);
-                if (!next) {
-                    form.reset();
-                    setServerError('');
-                    setSuccess(false);
-                }
+                if (!next) form.reset();
             }}
         >
             <DialogContent className="flex h-[min(640px,85dvh)] w-full max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
@@ -429,9 +422,6 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
                                                 </FormItem>
                                             )}
                                         />
-
-                                        {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-                                        {success && <p className="text-sm text-emerald-500">Senha alterada com sucesso.</p>}
 
                                         <Button type="submit" disabled={form.formState.isSubmitting}>
                                             {form.formState.isSubmitting && <Loader2 className="animate-spin" />}

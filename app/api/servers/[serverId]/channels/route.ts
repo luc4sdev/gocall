@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { createChannelSchema } from '@/lib/validation/channel';
+import { serverChannelsTag } from '@/lib/serverData';
 import type { ChannelDTO } from '@/lib/types';
 
 export async function POST(
@@ -62,6 +64,8 @@ export async function POST(
             canDelete: true,
             serverId,
         };
+
+        revalidateTag(serverChannelsTag(serverId), 'max');
 
         return NextResponse.json({ channel: dto });
     } catch (error) {

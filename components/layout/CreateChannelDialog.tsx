@@ -10,6 +10,7 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import type { ChannelDTO } from '@/lib/types';
+import { notify } from '@/lib/toast';
 import { Button } from '../ui/button';
 
 interface CreateChannelDialogProps {
@@ -23,21 +24,16 @@ interface CreateChannelDialogProps {
 export function CreateChannelDialog({ open, onOpenChange, type, serverId, onCreated }: CreateChannelDialogProps) {
     const [name, setName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
 
     const handleClose = (next: boolean) => {
         onOpenChange(next);
-        if (!next) {
-            setName('');
-            setError('');
-        }
+        if (!next) setName('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) return;
         setIsSubmitting(true);
-        setError('');
         try {
             const res = await fetch(`/api/servers/${serverId}/channels`, {
                 method: 'POST',
@@ -46,13 +42,13 @@ export function CreateChannelDialog({ open, onOpenChange, type, serverId, onCrea
             });
             const data = await res.json();
             if (!res.ok) {
-                setError(data.error || 'Não foi possível criar o canal.');
+                notify.error(data.error || 'Não foi possível criar o canal.');
                 return;
             }
             onCreated(data.channel);
             handleClose(false);
         } catch {
-            setError('Falha na conexão com o servidor.');
+            notify.error('Falha na conexão com o servidor.');
         } finally {
             setIsSubmitting(false);
         }
@@ -82,8 +78,6 @@ export function CreateChannelDialog({ open, onOpenChange, type, serverId, onCrea
                         placeholder={type === 'TEXT' ? 'novo-canal' : 'Sala nova'}
                         className="w-full bg-[#0F1012] border border-white/8 rounded-lg px-3 py-2 text-sm text-[#EDEBE7] placeholder:text-[#63656B] outline-none focus:border-brand/50 transition-colors"
                     />
-
-                    {error && <p className="text-sm text-[#F2555A]">{error}</p>}
 
                     <Button
                         type="submit"

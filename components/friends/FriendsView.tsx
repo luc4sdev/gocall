@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Check, Loader2, Search, UserMinus, UserPlus, X } from 'lucide-react';
 import { useAppContext } from '@/components/AppContext';
 import { Logo } from '@/components/Logo';
+import { notify } from '@/lib/toast';
 import type { FriendDTO, FriendRequestDTO, UserSearchResultDTO } from '@/lib/types';
 
 interface FriendsViewProps {
@@ -19,7 +20,6 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<UserSearchResultDTO[]>([]);
     const [searching, setSearching] = useState(false);
-    const [actionError, setActionError] = useState('');
     const [pendingActionId, setPendingActionId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -46,7 +46,6 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
     const onlineIds = new Set(activeParticipants.map((p) => p.identity));
 
     const sendRequest = async (username: string) => {
-        setActionError('');
         setPendingActionId(username);
         try {
             const res = await fetch('/api/friends', {
@@ -56,50 +55,48 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
             });
             const json = await res.json();
             if (!res.ok) {
-                setActionError(json.error || 'Não foi possível enviar o pedido.');
+                notify.error(json.error || 'Não foi possível enviar o pedido.');
                 return;
             }
             setQuery('');
             setResults([]);
             await onRefresh();
         } catch {
-            setActionError('Falha na conexão com o servidor.');
+            notify.error('Falha na conexão com o servidor.');
         } finally {
             setPendingActionId(null);
         }
     };
 
     const acceptRequest = async (friendshipId: string) => {
-        setActionError('');
         setPendingActionId(friendshipId);
         try {
             const res = await fetch(`/api/friends/${friendshipId}`, { method: 'PATCH' });
             const json = await res.json();
             if (!res.ok) {
-                setActionError(json.error || 'Não foi possível aceitar o pedido.');
+                notify.error(json.error || 'Não foi possível aceitar o pedido.');
                 return;
             }
             await onRefresh();
         } catch {
-            setActionError('Falha na conexão com o servidor.');
+            notify.error('Falha na conexão com o servidor.');
         } finally {
             setPendingActionId(null);
         }
     };
 
     const removeFriendship = async (friendshipId: string) => {
-        setActionError('');
         setPendingActionId(friendshipId);
         try {
             const res = await fetch(`/api/friends/${friendshipId}`, { method: 'DELETE' });
             if (!res.ok) {
                 const json = await res.json();
-                setActionError(json.error || 'Não foi possível concluir a ação.');
+                notify.error(json.error || 'Não foi possível concluir a ação.');
                 return;
             }
             await onRefresh();
         } catch {
-            setActionError('Falha na conexão com o servidor.');
+            notify.error('Falha na conexão com o servidor.');
         } finally {
             setPendingActionId(null);
         }
@@ -117,12 +114,6 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
 
             <div className="flex-1 overflow-y-auto px-5 py-5">
                 <div className="max-w-2xl mx-auto">
-                    {actionError && (
-                        <p className="mb-4 text-xs text-[#F2555A] bg-[#F2555A]/10 border border-[#F2555A]/20 rounded-lg px-3 py-2">
-                            {actionError}
-                        </p>
-                    )}
-
                     <div className="mb-6">
                         <label className="text-xs font-medium text-[#8B8D93] uppercase tracking-wider mb-2 block">
                             Adicionar amigo

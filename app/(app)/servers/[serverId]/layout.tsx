@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { ServerShell } from '@/components/layout/ServerShell';
+import { getCachedServerWithChannels } from '@/lib/serverData';
 import type { ChannelDTO } from '@/lib/types';
 
 export default async function ServerLayout({
@@ -21,10 +21,7 @@ export default async function ServerLayout({
         notFound();
     }
 
-    const server = await prisma.server.findUnique({
-        where: { id: serverId },
-        include: { channels: { orderBy: { createdAt: 'asc' } } },
-    });
+    const server = await getCachedServerWithChannels(serverId);
 
     if (!server) {
         notFound();

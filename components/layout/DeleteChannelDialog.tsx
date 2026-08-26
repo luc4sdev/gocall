@@ -10,6 +10,7 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import type { ChannelDTO } from '@/lib/types';
+import { notify } from '@/lib/toast';
 
 interface DeleteChannelDialogProps {
     channel: ChannelDTO | null;
@@ -19,35 +20,28 @@ interface DeleteChannelDialogProps {
 
 export function DeleteChannelDialog({ channel, onOpenChange, onDeleted }: DeleteChannelDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
-    const [error, setError] = useState('');
-
-    const handleClose = (next: boolean) => {
-        onOpenChange(next);
-        if (!next) setError('');
-    };
 
     const handleDelete = async () => {
         if (!channel) return;
         setIsDeleting(true);
-        setError('');
         try {
             const res = await fetch(`/api/channels/${channel.id}`, { method: 'DELETE' });
             const data = await res.json();
             if (!res.ok) {
-                setError(data.error || 'Não foi possível apagar o canal.');
+                notify.error(data.error || 'Não foi possível apagar o canal.');
                 return;
             }
             onDeleted(channel.id);
-            handleClose(false);
+            onOpenChange(false);
         } catch {
-            setError('Falha na conexão com o servidor.');
+            notify.error('Falha na conexão com o servidor.');
         } finally {
             setIsDeleting(false);
         }
     };
 
     return (
-        <Dialog open={!!channel} onOpenChange={handleClose}>
+        <Dialog open={!!channel} onOpenChange={onOpenChange}>
             <DialogContent className="bg-[#16171A] ring-white/6 sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle className="text-[#EDEBE7] flex items-center gap-2">
@@ -61,11 +55,9 @@ export function DeleteChannelDialog({ channel, onOpenChange, onDeleted }: Delete
                     </DialogDescription>
                 </DialogHeader>
 
-                {error && <p className="text-sm text-[#F2555A]">{error}</p>}
-
                 <div className="flex gap-2">
                     <button
-                        onClick={() => handleClose(false)}
+                        onClick={() => onOpenChange(false)}
                         disabled={isDeleting}
                         className="flex-1 bg-[#1F2023] hover:bg-[#26282c] text-[#EDEBE7] font-medium text-sm py-2.5 px-4 rounded-xl transition-colors"
                     >
