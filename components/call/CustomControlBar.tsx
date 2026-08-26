@@ -1,5 +1,5 @@
 import { useLocalParticipant } from '@livekit/components-react';
-import { ScreenSharePresets, VideoPreset } from 'livekit-client';
+import { AudioPresets, ScreenSharePresets, VideoPreset } from 'livekit-client';
 import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Monitor } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { enableMicrophone, playSound } from '@/lib/utils';
@@ -73,6 +73,7 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                     echoCancellation: true,
                     noiseSuppression: false,
                     autoGainControl: false,
+                    channelCount: 2,
                 },
                 resolution: option.preset.resolution,
                 contentHint: option.contentHint,
@@ -80,6 +81,9 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
                 {
                     screenShareEncoding: option.preset.encoding,
                     videoCodec: 'av1',
+                    audioPreset: AudioPresets.musicHighQualityStereo,
+                    dtx: false,
+                    red: true,
                 }
             );
         } catch (err) {
