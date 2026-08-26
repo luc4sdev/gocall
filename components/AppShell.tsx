@@ -20,7 +20,7 @@ import { AppContext, type AppContextValue, type ScreenShareViewState } from '@/c
 import { cn } from '@/lib/utils';
 import type { ChannelDTO } from '@/lib/types';
 
-const ROOM_OPTIONS: RoomOptions = { dynacast: true, webAudioMix: true };
+const ROOM_OPTIONS: RoomOptions = { dynacast: true };
 
 const EMPTY_SCREEN_SHARE_VIEW_STATE: ScreenShareViewState = {
     pausedKeys: new Set(),
