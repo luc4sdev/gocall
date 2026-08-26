@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
-import { HomeClient } from '@/components/HomeClient';
 
 export default async function Home() {
   const cookieStore = await cookies();
@@ -12,5 +11,5 @@ export default async function Home() {
     redirect('/login');
   }
 
-  return <HomeClient username={session.username} />;
+  redirect('/friends');
 }

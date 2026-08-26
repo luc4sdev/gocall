@@ -4,12 +4,7 @@ export interface ChannelDTO {
     type: 'TEXT' | 'VOICE';
     roomName: string | null;
     canDelete: boolean;
-}
-
-export interface ServerDTO {
-    id: string;
-    name: string;
-    channels: ChannelDTO[];
+    serverId: string;
 }
 
 export interface MessageDTO {
@@ -18,4 +13,29 @@ export interface MessageDTO {
     createdAt: string;
     authorId: string;
     authorName: string;
+}
+
+export type FriendshipStatus = 'PENDING' | 'ACCEPTED';
+
+export interface FriendDTO {
+    friendshipId: string;
+    id: string;
+    username: string;
+}
+
+export interface FriendRequestDTO {
+    friendshipId: string;
+    id: string;
+    username: string;
+    createdAt: string;
+}
+
+export interface UserSearchResultDTO {
+    id: string;
+    username: string;
+    relationship: {
+        status: FriendshipStatus;
+        direction: 'incoming' | 'outgoing';
+        friendshipId: string;
+    } | null;
 }

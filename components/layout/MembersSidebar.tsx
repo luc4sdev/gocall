@@ -1,7 +1,9 @@
-import { Eye, Radio } from 'lucide-react';
+import { Eye, Loader2, Radio, UserPlus } from 'lucide-react';
 import { Participant } from 'livekit-client';
 import type { ChannelDTO } from '@/lib/types';
 import type { ScreenShareThumbnail } from './ScreenShareThumbnailBridge';
+
+export type FriendRelationship = 'friend' | 'outgoing' | 'incoming';
 
 interface MembersSidebarProps {
     participants: Participant[];
@@ -10,6 +12,9 @@ interface MembersSidebarProps {
     thumbnails?: Map<string, ScreenShareThumbnail>;
     onWatchStream?: (channelId: string) => void;
     myVoiceChannelId?: string | null;
+    relationshipByUserId?: Map<string, FriendRelationship>;
+    onSendFriendRequest?: (username: string) => void;
+    pendingFriendUsername?: string | null;
 }
 
 interface Member {
@@ -30,18 +35,37 @@ function LiveBadge() {
     );
 }
 
+function AddFriendButton({ onClick, pending }: { onClick: () => void; pending: boolean }) {
+    return (
+        <button
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            disabled={pending}
+            title="Adicionar amigo"
+            className="shrink-0 p-1.5 rounded-lg text-[#63656B] opacity-0 group-hover:opacity-100 hover:bg-brand/15 hover:text-brand transition-all disabled:opacity-40 cursor-pointer"
+        >
+            {pending ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+        </button>
+    );
+}
+
 function MemberRow({
     member,
     thumbnail,
     onWatchStream,
+    canAddFriend,
+    onSendFriendRequest,
+    sendingRequest,
 }: {
     member: Member;
     thumbnail?: ScreenShareThumbnail;
     onWatchStream?: () => void;
+    canAddFriend: boolean;
+    onSendFriendRequest?: () => void;
+    sendingRequest: boolean;
 }) {
     if (member.screenSharing && !member.isLocal && thumbnail && onWatchStream) {
         return (
-            <div className="px-1 py-1.5 rounded-lg">
+            <div className="group px-1 py-1.5 rounded-lg">
                 <div className="flex items-center gap-2 px-2 mb-1.5 min-w-0">
                     <div className="w-6 h-6 rounded-full bg-[#2A2D35] flex items-center justify-center text-[10px] font-medium overflow-hidden shrink-0">
                         {member.name[0]?.toUpperCase()}
@@ -50,6 +74,9 @@ function MemberRow({
                         {member.name}
                     </span>
                     <LiveBadge />
+                    {canAddFriend && onSendFriendRequest && (
+                        <AddFriendButton onClick={onSendFriendRequest} pending={sendingRequest} />
+                    )}
                 </div>
                 <button
                     onClick={onWatchStream}
@@ -68,27 +95,42 @@ function MemberRow({
     }
 
     return (
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer min-w-0">
-            <div className="relative shrink-0">
-                <div
-                    className='w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium overflow-hidden transition-shadow'
-                >
-                    {member.name[0]?.toUpperCase()}
+        <div className="group flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 cursor-pointer min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative shrink-0">
+                    <div
+                        className='w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium overflow-hidden transition-shadow'
+                    >
+                        {member.name[0]?.toUpperCase()}
+                    </div>
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#16171A]" />
                 </div>
-                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#16171A]" />
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[13px] text-[#B4B6BB] truncate">
+                        {member.name}
+                        {member.isLocal && ' (você)'}
+                    </span>
+                    {member.screenSharing && <LiveBadge />}
+                </div>
             </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[13px] text-[#B4B6BB] truncate">
-                    {member.name}
-                    {member.isLocal && ' (você)'}
-                </span>
-                {member.screenSharing && <LiveBadge />}
-            </div>
+            {canAddFriend && onSendFriendRequest && (
+                <AddFriendButton onClick={onSendFriendRequest} pending={sendingRequest} />
+            )}
         </div>
     );
 }
 
-export function MembersSidebar({ participants, localIdentity, channels, thumbnails, onWatchStream, myVoiceChannelId }: MembersSidebarProps) {
+export function MembersSidebar({
+    participants,
+    localIdentity,
+    channels,
+    thumbnails,
+    onWatchStream,
+    myVoiceChannelId,
+    relationshipByUserId,
+    onSendFriendRequest,
+    pendingFriendUsername,
+}: MembersSidebarProps) {
     const members: Member[] = participants.map((p) => ({
         identity: p.identity,
         name: p.name || p.identity,
@@ -97,6 +139,12 @@ export function MembersSidebar({ participants, localIdentity, channels, thumbnai
         voiceChannelId: p.attributes?.voiceChannelId || null,
         screenSharing: p.attributes?.screenSharing === 'true',
     }));
+
+    const canAddFriend = (m: Member) =>
+        !m.isLocal &&
+        m.name !== m.identity &&
+        !relationshipByUserId?.has(m.identity) &&
+        !!onSendFriendRequest;
 
     const inCallMembers = members.filter((m) => m.inCall);
     const onlineMembers = members.filter((m) => !m.inCall);
@@ -137,6 +185,9 @@ export function MembersSidebar({ participants, localIdentity, channels, thumbnai
                                             member={m}
                                             thumbnail={isMyChannel ? undefined : thumbnails?.get(m.identity)}
                                             onWatchStream={!isMyChannel && onWatchStream && m.voiceChannelId ? () => onWatchStream(m.voiceChannelId!) : undefined}
+                                            canAddFriend={canAddFriend(m)}
+                                            onSendFriendRequest={onSendFriendRequest ? () => onSendFriendRequest(m.name) : undefined}
+                                            sendingRequest={pendingFriendUsername === m.name}
                                         />
                                     ))}
                                 </div>
@@ -151,7 +202,13 @@ export function MembersSidebar({ participants, localIdentity, channels, thumbnai
                             Online — {onlineMembers.length}
                         </div>
                         {onlineMembers.map((m) => (
-                            <MemberRow key={m.identity} member={m} />
+                            <MemberRow
+                                key={m.identity}
+                                member={m}
+                                canAddFriend={canAddFriend(m)}
+                                onSendFriendRequest={onSendFriendRequest ? () => onSendFriendRequest(m.name) : undefined}
+                                sendingRequest={pendingFriendUsername === m.name}
+                            />
                         ))}
                     </>
                 )}

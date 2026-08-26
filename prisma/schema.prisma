@@ -17,16 +17,39 @@ enum ChannelType {
   VOICE
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
 model User {
-  id              String    @id @default(cuid())
-  username        String    @unique
-  password        String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  messages        Message[]
-  createdChannels Channel[] @relation("ChannelCreator")
+  id                      String       @id @default(cuid())
+  username                String       @unique
+  password                String
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  messages                Message[]
+  createdChannels         Channel[]    @relation("ChannelCreator")
+  sentFriendRequests      Friendship[] @relation("FriendRequester")
+  receivedFriendRequests  Friendship[] @relation("FriendAddressee")
 
   @@map("users")
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requester   User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId String
+  addressee   User             @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+  @@map("friendships")
 }
 
 model Server {

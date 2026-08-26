@@ -11,6 +11,9 @@ export interface ScreenShareThumbnail {
 }
 
 const TOPIC = 'gocall-screenshare-thumbnail';
+const REQUEST_TOPIC = 'gocall-screenshare-thumbnail-request';
+const REQUEST_RETRY_MS = 3000;
+const REQUEST_MAX_RETRIES = 5;
 
 interface ImageCaptureLike {
     grabFrame(): Promise<ImageBitmap>;
@@ -45,9 +48,10 @@ export async function captureVideoTrackThumbnail(
 interface ScreenShareThumbnailBridgeProps {
     thumbnail: string | null;
     onReceive: (thumbnail: ScreenShareThumbnail) => void;
+    requestFrom?: string[];
 }
 
-export function ScreenShareThumbnailBridge({ thumbnail, onReceive }: ScreenShareThumbnailBridgeProps) {
+export function ScreenShareThumbnailBridge({ thumbnail, onReceive, requestFrom }: ScreenShareThumbnailBridgeProps) {
     const room = useRoomContext();
     const thumbnailRef = useRef<string | null>(thumbnail);
 
@@ -73,8 +77,21 @@ export function ScreenShareThumbnailBridge({ thumbnail, onReceive }: ScreenShare
     }, [room]);
 
     useEffect(() => {
+        const respondToRequest = (participant: Participant) => {
+            if (!thumbnailRef.current) return;
+            const payload = new TextEncoder().encode(JSON.stringify({ dataUrl: thumbnailRef.current }));
+            room.localParticipant
+                .publishData(payload, { reliable: true, topic: TOPIC, destinationIdentities: [participant.identity] })
+                .catch(console.error);
+        };
+
         const handleData = (payload: Uint8Array, participant?: Participant, _kind?: unknown, topic?: string) => {
-            if (topic !== TOPIC || !participant) return;
+            if (!participant) return;
+            if (topic === REQUEST_TOPIC) {
+                respondToRequest(participant);
+                return;
+            }
+            if (topic !== TOPIC) return;
             try {
                 const { dataUrl } = JSON.parse(new TextDecoder().decode(payload));
                 if (typeof dataUrl === 'string') {
@@ -89,6 +106,38 @@ export function ScreenShareThumbnailBridge({ thumbnail, onReceive }: ScreenShare
             room.off(RoomEvent.DataReceived, handleData);
         };
     }, [room, onReceive]);
+
+    const requestKey = requestFrom && requestFrom.length > 0 ? [...requestFrom].sort().join(',') : '';
+
+    useEffect(() => {
+        if (!requestKey) return;
+        const identities = requestKey.split(',');
+        let cancelled = false;
+        let retries = 0;
+
+        const sendRequest = () => {
+            const payload = new TextEncoder().encode('{}');
+            room.localParticipant
+                .publishData(payload, { reliable: true, topic: REQUEST_TOPIC, destinationIdentities: identities })
+                .catch(console.error);
+        };
+
+        sendRequest();
+        const interval = setInterval(() => {
+            if (cancelled) return;
+            retries += 1;
+            if (retries > REQUEST_MAX_RETRIES) {
+                clearInterval(interval);
+                return;
+            }
+            sendRequest();
+        }, REQUEST_RETRY_MS);
+
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [room, requestKey]);
 
     return null;
 }

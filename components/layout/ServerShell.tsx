@@ -1,14 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { Hash, Volume2, Settings, Headphones, Mic, MicOff, HeadphoneOff, PhoneOff, ArrowLeft, Users, X, Radio, Plus, Trash2 } from 'lucide-react';
-import { Participant } from 'livekit-client';
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { Hash, Volume2, MicOff, PhoneOff, ArrowLeft, Users, X, Radio, Plus, Trash2 } from 'lucide-react';
+import type { Participant } from 'livekit-client';
 import type { ChannelDTO } from '@/lib/types';
-import { SettingsModal } from './SettingsModal';
-import { MembersSidebar } from './MembersSidebar';
-import type { ScreenShareThumbnail } from './ScreenShareThumbnailBridge';
+import { useAppContext } from '@/components/AppContext';
+import { UserControlBar } from './UserControlBar';
+import { MembersSidebar, type FriendRelationship } from './MembersSidebar';
 import { CreateChannelDialog } from './CreateChannelDialog';
 import { DeleteChannelDialog } from './DeleteChannelDialog';
-import { Logo } from '@/components/Logo';
-import type { VoiceControlState } from '@/components/call/VoiceRoomBridge';
+import { ChannelSyncBridge, type ChannelSyncMessage } from './ChannelSyncBridge';
+import { useFriendsData } from '@/components/friends/useFriendsData';
 
 function LiveBadge() {
     return (
@@ -43,61 +47,141 @@ function CallTimer({ startedAt }: { startedAt: number }) {
     );
 }
 
-interface DiscordLayoutProps {
+interface ServerShellProps {
     children: React.ReactNode;
-    serverName: string;
     serverId: string;
-    channels: ChannelDTO[];
-    activeChannelId: string;
-    onChannelSelect: (channelId: string) => void;
-    onChannelCreated: (channel: ChannelDTO) => void;
-    onChannelDeleted: (channelId: string) => void;
-    localIdentity: string;
-    username: string;
-    voiceChannelId: string | null;
-    voiceState: VoiceControlState | null;
-    onLeaveCall: () => void;
-    activeParticipants?: Participant[];
-    hideMembersSidebar?: boolean;
-    voiceParticipantsSlotRef?: (el: HTMLDivElement | null) => void;
-    screenShareThumbnails?: Map<string, ScreenShareThumbnail>;
-    onWatchStream?: (channelId: string) => void;
+    serverName: string;
+    initialChannels: ChannelDTO[];
 }
 
-export function Layout({
-    children,
-    serverName,
-    serverId,
-    channels,
-    activeChannelId,
-    onChannelSelect,
-    onChannelCreated,
-    onChannelDeleted,
-    localIdentity,
-    username,
-    voiceChannelId,
-    voiceState,
-    onLeaveCall,
-    activeParticipants = [],
-    hideMembersSidebar = false,
-    voiceParticipantsSlotRef,
-    screenShareThumbnails,
-    onWatchStream,
-}: DiscordLayoutProps) {
-    const [showSettings, setShowSettings] = useState(false);
+export function ServerShell({ children, serverId, serverName, initialChannels }: ServerShellProps) {
+    const router = useRouter();
+    const params = useParams<{ serverId: string; channelId?: string }>();
+    const activeChannelId = params?.channelId ?? '';
+
+    const {
+        username,
+        localIdentity,
+        activeParticipants,
+        voiceChannel,
+        voiceState,
+        theaterMode,
+        onJoinVoice,
+        onLeaveVoice,
+        screenShareThumbnails,
+        setSkipAutoPauseOnJoin,
+        registerVoiceParticipantsSlot,
+    } = useAppContext();
+
+    const isViewingOwnCall = !!voiceChannel && voiceChannel.id === activeChannelId;
+    const hideMembersSidebar = isViewingOwnCall && theaterMode;
+
+    const [channels, setChannels] = useState<ChannelDTO[]>(initialChannels);
     const [mobileView, setMobileView] = useState<'sidebar' | 'content'>('sidebar');
     const [showMembersMobile, setShowMembersMobile] = useState(false);
     const [createChannelType, setCreateChannelType] = useState<'TEXT' | 'VOICE' | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<ChannelDTO | null>(null);
+    const broadcastRef = useRef<((message: ChannelSyncMessage) => void) | null>(null);
 
-    const handleChannelSelect = (channelId: string) => {
-        onChannelSelect(channelId);
+    const { data: friendsData, refresh: refreshFriends } = useFriendsData();
+    const [pendingFriendUsername, setPendingFriendUsername] = useState<string | null>(null);
+
+    const relationshipByUserId = useMemo(() => {
+        const map = new Map<string, FriendRelationship>();
+        for (const f of friendsData?.friends ?? []) map.set(f.id, 'friend');
+        for (const r of friendsData?.outgoingRequests ?? []) map.set(r.id, 'outgoing');
+        for (const r of friendsData?.incomingRequests ?? []) map.set(r.id, 'incoming');
+        return map;
+    }, [friendsData]);
+
+    const handleSendFriendRequest = useCallback(
+        async (username: string) => {
+            setPendingFriendUsername(username);
+            try {
+                const res = await fetch('/api/friends', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username }),
+                });
+                if (res.ok) await refreshFriends();
+            } finally {
+                setPendingFriendUsername(null);
+            }
+        },
+        [refreshFriends]
+    );
+
+    const applyChannelCreated = useCallback((channel: ChannelDTO) => {
+        setChannels((prev) => (prev.some((c) => c.id === channel.id) ? prev : [...prev, channel]));
+    }, []);
+
+    const applyChannelDeleted = useCallback(
+        (channelId: string) => {
+            setChannels((prev) => {
+                const remaining = prev.filter((c) => c.id !== channelId);
+                if (activeChannelId === channelId) {
+                    const fallback = remaining.find((c) => c.type === 'TEXT') ?? remaining[0];
+                    router.push(fallback ? `/servers/${serverId}/channels/${fallback.id}` : `/servers/${serverId}`);
+                }
+                return remaining;
+            });
+            if (voiceChannel?.id === channelId) {
+                onLeaveVoice();
+            }
+        },
+        [activeChannelId, router, serverId, voiceChannel, onLeaveVoice]
+    );
+
+    const handleChannelCreated = useCallback(
+        (channel: ChannelDTO) => {
+            applyChannelCreated(channel);
+            broadcastRef.current?.({ type: 'created', channel });
+        },
+        [applyChannelCreated]
+    );
+
+    const handleChannelDeleted = useCallback(
+        (channelId: string) => {
+            applyChannelDeleted(channelId);
+            broadcastRef.current?.({ type: 'deleted', channelId });
+        },
+        [applyChannelDeleted]
+    );
+
+    const handleChannelSyncMessage = useCallback(
+        (message: ChannelSyncMessage) => {
+            if (message.type === 'created') {
+                applyChannelCreated({ ...message.channel, canDelete: false });
+            } else {
+                applyChannelDeleted(message.channelId);
+            }
+        },
+        [applyChannelCreated, applyChannelDeleted]
+    );
+
+    const handleBroadcastReady = useCallback((broadcast: (message: ChannelSyncMessage) => void) => {
+        broadcastRef.current = broadcast;
+    }, []);
+
+    const handleChannelSelect = () => {
         setMobileView('content');
     };
 
-    const textChannels = channels.filter((c) => c.type === 'TEXT');
-    const voiceChannels = channels.filter((c) => c.type === 'VOICE');
-    const voiceChannelName = channels.find((c) => c.id === voiceChannelId)?.name ?? '';
+    const handleWatchStream = useCallback(
+        (channelId: string) => {
+            const channel = channels.find((c) => c.id === channelId);
+            if (!channel) return;
+            router.push(`/servers/${serverId}/channels/${channelId}`);
+            setSkipAutoPauseOnJoin(true);
+            setShowMembersMobile(false);
+            setMobileView('content');
+            onJoinVoice(channel);
+        },
+        [channels, router, serverId, onJoinVoice, setSkipAutoPauseOnJoin]
+    );
+
+    const textChannels = useMemo(() => channels.filter((c) => c.type === 'TEXT'), [channels]);
+    const voiceChannels = useMemo(() => channels.filter((c) => c.type === 'VOICE'), [channels]);
 
     const callParticipantsByChannel = new Map<string, Participant[]>();
     const callStartedAtByChannel = new Map<string, number>();
@@ -118,22 +202,10 @@ export function Layout({
 
     const isInRoom = voiceState !== null;
     const micMuted = isInRoom ? !voiceState.isMicrophoneEnabled : false;
-    const isDeafened = voiceState?.isDeafened ?? false;
-
-    const toggleMic = () => voiceState?.toggleMic();
-    const toggleDeafen = () => voiceState?.toggleDeafen();
 
     return (
-        <div className="flex h-dvh bg-[#0F1012] text-[#EDEBE7] overflow-hidden font-sans antialiased">
-
-            <div className="hidden lg:flex w-16 bg-[#0B0C0D] flex-col items-center py-4 gap-3 shrink-0 border-r border-white/4">
-                <div className="relative group cursor-pointer">
-                    <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-8 bg-brand rounded-full" />
-                    <div className="w-11 h-11 rounded-2xl bg-[#1F2023] flex items-center justify-center transition-colors group-hover:bg-[#26282c]">
-                        <Logo className="w-6 h-6" />
-                    </div>
-                </div>
-            </div>
+        <>
+            <ChannelSyncBridge onMessage={handleChannelSyncMessage} onReady={handleBroadcastReady} />
 
             <div
                 className={`w-full lg:w-64 bg-[#16171A] flex-col shrink-0 ${mobileView === 'sidebar' ? 'flex' : 'hidden'} lg:flex`}
@@ -160,8 +232,9 @@ export function Layout({
                             {activeChannelId === channel.id && (
                                 <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-brand rounded-full" />
                             )}
-                            <button
-                                onClick={() => handleChannelSelect(channel.id)}
+                            <Link
+                                href={`/servers/${serverId}/channels/${channel.id}`}
+                                onClick={handleChannelSelect}
                                 className="flex-1 min-w-0 flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
                             >
                                 <Hash
@@ -171,7 +244,7 @@ export function Layout({
                                 <span className={`truncate ${activeChannelId === channel.id ? 'text-[#EDEBE7]' : 'text-[#8B8D93] group-hover:text-[#EDEBE7]'}`}>
                                     {channel.name}
                                 </span>
-                            </button>
+                            </Link>
                             {channel.canDelete && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel); }}
@@ -197,7 +270,7 @@ export function Layout({
                         </button>
                     </div>
                     {voiceChannels.map((channel) => {
-                        const isMyChannel = voiceChannelId === channel.id;
+                        const isMyChannel = voiceChannel?.id === channel.id;
                         const otherMembers = [...(callParticipantsByChannel.get(channel.id) ?? [])].sort(
                             (a, b) => Number(b.attributes?.screenSharing === 'true') - Number(a.attributes?.screenSharing === 'true')
                         );
@@ -210,8 +283,9 @@ export function Layout({
                                     {activeChannelId === channel.id && (
                                         <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-4 bg-brand rounded-full" />
                                     )}
-                                    <button
-                                        onClick={() => handleChannelSelect(channel.id)}
+                                    <Link
+                                        href={`/servers/${serverId}/channels/${channel.id}`}
+                                        onClick={handleChannelSelect}
                                         className="flex-1 min-w-0 flex items-center gap-2.5 pl-3 pr-2 py-1.5 text-[14px] transition-colors rounded-lg"
                                     >
                                         <Volume2
@@ -224,7 +298,7 @@ export function Layout({
                                             </span>
                                             {showCallSection && callStartedAt && <CallTimer startedAt={callStartedAt} />}
                                         </span>
-                                    </button>
+                                    </Link>
                                     {channel.canDelete && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel); }}
@@ -262,7 +336,7 @@ export function Layout({
                                                     </div>
                                                 </div>
                                                 <button
-                                                    onClick={onLeaveCall}
+                                                    onClick={onLeaveVoice}
                                                     className="p-1.5 rounded-lg text-[#63656B] hover:bg-[#F2555A]/15 hover:text-[#F2555A] transition-all shrink-0"
                                                     title="Sair da chamada"
                                                 >
@@ -271,10 +345,8 @@ export function Layout({
                                             </div>
                                         )}
                                         {isMyChannel && isInRoom ? (
-
-                                            <div ref={voiceParticipantsSlotRef} />
+                                            <div ref={registerVoiceParticipantsSlot} />
                                         ) : (
-
                                             otherMembers.map((p) => (
                                                 <div key={p.identity} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg min-w-0">
                                                     <div className="w-7 h-7 rounded-full bg-[#2A2D35] flex items-center justify-center text-[11px] font-medium overflow-hidden shrink-0">
@@ -296,50 +368,7 @@ export function Layout({
                     })}
                 </div>
 
-                <div className="min-h-16 px-3 pb-[env(safe-area-inset-bottom)] flex items-center justify-between shrink-0 border-t border-white/4">
-                    <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/3 cursor-pointer flex-1 min-w-0">
-                        <div className="relative w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium shrink-0">
-                            {(username || '?')[0]?.toUpperCase()}
-                            <div className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-[#16171A]" />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[13px] font-medium truncate">{username || 'Conectando...'}</span>
-                            <span className="text-[11px] text-[#63656B] truncate">
-                                {isInRoom ? `Em chamada — ${voiceChannelName}` : 'Online'}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-0.5">
-                        <button
-                            onClick={toggleMic}
-                            disabled={!isInRoom}
-                            className={`p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${micMuted ? 'text-[#F2555A] bg-[#F2555A]/10 hover:bg-[#F2555A]/15' : 'text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7]'
-                                }`}
-                            title={micMuted ? 'Desmutar' : 'Mutar'}
-                        >
-                            {micMuted ? <MicOff size={16} /> : <Mic size={16} />}
-                        </button>
-
-                        <button
-                            onClick={toggleDeafen}
-                            disabled={!isInRoom}
-                            className={`p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${isDeafened ? 'text-[#F2555A] bg-[#F2555A]/10 hover:bg-[#F2555A]/15' : 'text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7]'
-                                }`}
-                            title={isDeafened ? 'Desensurdecer' : 'Ensurdecer'}
-                        >
-                            {isDeafened ? <HeadphoneOff size={16} /> : <Headphones size={16} />}
-                        </button>
-
-                        <button
-                            onClick={() => setShowSettings(true)}
-                            className="p-2 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors"
-                            title="Configurações"
-                        >
-                            <Settings size={16} />
-                        </button>
-                    </div>
-                </div>
+                <UserControlBar />
             </div>
 
             <div
@@ -353,15 +382,13 @@ export function Layout({
                         <ArrowLeft size={16} />
                         Canais
                     </button>
-                    {!hideMembersSidebar && (
-                        <button
-                            onClick={() => setShowMembersMobile(true)}
-                            className="p-2 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors"
-                            title="Membros"
-                        >
-                            <Users size={17} />
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setShowMembersMobile(true)}
+                        className="p-2 rounded-lg text-[#8B8D93] hover:bg-white/5 hover:text-[#EDEBE7] transition-colors"
+                        title="Membros"
+                    >
+                        <Users size={17} />
+                    </button>
                 </div>
                 <div className="flex-1 flex flex-col min-h-0">
                     {children}
@@ -375,13 +402,16 @@ export function Layout({
                         localIdentity={localIdentity}
                         channels={channels}
                         thumbnails={screenShareThumbnails}
-                        onWatchStream={onWatchStream}
-                        myVoiceChannelId={isInRoom ? voiceChannelId : null}
+                        onWatchStream={handleWatchStream}
+                        myVoiceChannelId={isInRoom ? (voiceChannel?.id ?? null) : null}
+                        relationshipByUserId={relationshipByUserId}
+                        onSendFriendRequest={handleSendFriendRequest}
+                        pendingFriendUsername={pendingFriendUsername}
                     />
                 </div>
             )}
 
-            {showMembersMobile && !hideMembersSidebar && (
+            {!hideMembersSidebar && showMembersMobile && (
                 <div
                     className="lg:hidden fixed inset-0 z-40 flex justify-end bg-black/50"
                     onClick={() => setShowMembersMobile(false)}
@@ -399,28 +429,29 @@ export function Layout({
                             localIdentity={localIdentity}
                             channels={channels}
                             thumbnails={screenShareThumbnails}
-                            onWatchStream={onWatchStream}
-                            myVoiceChannelId={isInRoom ? voiceChannelId : null}
+                            onWatchStream={handleWatchStream}
+                            myVoiceChannelId={isInRoom ? (voiceChannel?.id ?? null) : null}
+                            relationshipByUserId={relationshipByUserId}
+                            onSendFriendRequest={handleSendFriendRequest}
+                            pendingFriendUsername={pendingFriendUsername}
                         />
                     </div>
                 </div>
             )}
-
-            <SettingsModal open={showSettings} onOpenChange={setShowSettings} username={username} />
 
             <CreateChannelDialog
                 open={createChannelType !== null}
                 onOpenChange={(open) => !open && setCreateChannelType(null)}
                 type={createChannelType ?? 'TEXT'}
                 serverId={serverId}
-                onCreated={onChannelCreated}
+                onCreated={handleChannelCreated}
             />
 
             <DeleteChannelDialog
                 channel={deleteTarget}
                 onOpenChange={(open) => !open && setDeleteTarget(null)}
-                onDeleted={onChannelDeleted}
+                onDeleted={handleChannelDeleted}
             />
-        </div>
+        </>
     );
 }

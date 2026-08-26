@@ -136,16 +136,32 @@ export function VoiceRoomBridge({
     useEffect(() => {
         if (!isScreenShareEnabled || !onThumbnail) return;
 
+        let cancelled = false;
+        let retryTimeout: ReturnType<typeof setTimeout> | undefined;
+
         const capture = async () => {
             const track = localParticipant.getTrackPublication(Track.Source.ScreenShare)?.track;
-            if (!(track instanceof LocalVideoTrack) || !track.mediaStreamTrack) return;
+            if (!(track instanceof LocalVideoTrack) || !track.mediaStreamTrack) return false;
             const dataUrl = await captureVideoTrackThumbnail(track.mediaStreamTrack);
-            if (dataUrl) onThumbnail(dataUrl);
+            if (!dataUrl || cancelled) return false;
+            onThumbnail(dataUrl);
+            return true;
         };
 
-        capture();
+        const attempt = async (retriesLeft: number) => {
+            const success = await capture();
+            if (!success && retriesLeft > 0 && !cancelled) {
+                retryTimeout = setTimeout(() => attempt(retriesLeft - 1), 1500);
+            }
+        };
+
+        attempt(6);
         const interval = setInterval(capture, THUMBNAIL_INTERVAL_MS);
-        return () => clearInterval(interval);
+        return () => {
+            cancelled = true;
+            clearTimeout(retryTimeout);
+            clearInterval(interval);
+        };
     }, [isScreenShareEnabled, localParticipant, onThumbnail]);
 
     return null;

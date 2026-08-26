@@ -1,0 +1,35 @@
+'use client';
+
+import { createContext, useContext } from 'react';
+import type { Participant } from 'livekit-client';
+import type { ChannelDTO } from '@/lib/types';
+import type { VoiceControlState } from '@/components/call/VoiceRoomBridge';
+import type { ScreenShareThumbnail } from '@/components/layout/ScreenShareThumbnailBridge';
+
+export interface AppContextValue {
+    username: string;
+    localIdentity: string;
+    activeParticipants: Participant[];
+    voiceChannel: ChannelDTO | null;
+    voiceState: VoiceControlState | null;
+    theaterMode: boolean;
+    onTheaterModeChange: (next: boolean) => void;
+    onJoinVoice: (channel: ChannelDTO) => Promise<boolean>;
+    onLeaveVoice: () => void;
+    localThumbnail: string | null;
+    screenShareThumbnails: Map<string, ScreenShareThumbnail>;
+    skipAutoPauseOnJoin: boolean;
+    setSkipAutoPauseOnJoin: (next: boolean) => void;
+    registerVoiceRoomSlot: (channelId: string, el: HTMLDivElement | null) => void;
+    registerVoiceParticipantsSlot: (el: HTMLDivElement | null) => void;
+}
+
+export const AppContext = createContext<AppContextValue | null>(null);
+
+export function useAppContext(): AppContextValue {
+    const ctx = useContext(AppContext);
+    if (!ctx) {
+        throw new Error('useAppContext precisa ser usado dentro de <AppShell>');
+    }
+    return ctx;
+}

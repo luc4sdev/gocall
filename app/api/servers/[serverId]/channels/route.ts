@@ -60,6 +60,7 @@ export async function POST(
             type: channel.type,
             roomName,
             canDelete: true,
+            serverId,
         };
 
         return NextResponse.json({ channel: dto });
