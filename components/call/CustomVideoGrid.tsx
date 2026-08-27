@@ -29,12 +29,9 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPaus
         [tracks]
     );
 
-    const { screenShareViewState, setScreenShareViewState } = useAppContext();
+    const { screenShareViewState, setScreenShareViewState, screenShareThumbnails } = useAppContext();
     const { pausedKeys, seenKeys: seenScreenShareKeys, focusedKey } = screenShareViewState;
 
-    const setFocusedKey = (key: string | null) => {
-        setScreenShareViewState((prev) => ({ ...prev, focusedKey: key }));
-    };
     const setPausedKeys = (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
         setScreenShareViewState((prev) => ({
             ...prev,
@@ -84,20 +81,63 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPaus
 
     useEffect(() => {
         for (const t of screenShareTracks) {
+            if (!isTrackReference(t)) continue;
             const key = `${t.participant.identity}-${t.source}`;
-            if (!pausedKeys.has(key) || !isTrackReference(t)) continue;
+            const shouldBeSubscribed = !pausedKeys.has(key);
 
             const videoPublication = t.publication;
             if (videoPublication instanceof RemoteTrackPublication) {
-                videoPublication.setSubscribed(false);
+                videoPublication.setSubscribed(shouldBeSubscribed);
             }
             t.participant.audioTrackPublications.forEach((pub) => {
                 if (pub.source === Track.Source.ScreenShareAudio && pub instanceof RemoteTrackPublication) {
-                    pub.setSubscribed(false);
+                    pub.setSubscribed(shouldBeSubscribed);
                 }
             });
         }
     }, [screenShareTracks, pausedKeys]);
+
+    const screenShareTracksRef = useRef(screenShareTracks);
+    useEffect(() => {
+        screenShareTracksRef.current = screenShareTracks;
+    }, [screenShareTracks]);
+
+    const pendingUnsubscribeAllRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        if (pendingUnsubscribeAllRef.current !== null) {
+            clearTimeout(pendingUnsubscribeAllRef.current);
+            pendingUnsubscribeAllRef.current = null;
+        }
+
+        return () => {
+            pendingUnsubscribeAllRef.current = setTimeout(() => {
+                pendingUnsubscribeAllRef.current = null;
+
+                const remoteTracks = screenShareTracksRef.current.filter((t) => !t.participant.isLocal);
+                if (remoteTracks.length === 0) return;
+
+                for (const t of remoteTracks) {
+                    if (!isTrackReference(t)) continue;
+                    const videoPublication = t.publication;
+                    if (videoPublication instanceof RemoteTrackPublication) {
+                        videoPublication.setSubscribed(false);
+                    }
+                    t.participant.audioTrackPublications.forEach((pub) => {
+                        if (pub.source === Track.Source.ScreenShareAudio && pub instanceof RemoteTrackPublication) {
+                            pub.setSubscribed(false);
+                        }
+                    });
+                }
+
+                const remoteKeys = remoteTracks.map((t) => `${t.participant.identity}-${t.source}`);
+                setScreenShareViewState((prev) => ({
+                    ...prev,
+                    pausedKeys: new Set([...prev.pausedKeys, ...remoteKeys]),
+                }));
+            }, 0);
+        };
+    }, [setScreenShareViewState]);
 
     const focusedTrack = useMemo(() => {
         if (screenShareTracks.length === 0) return undefined;
@@ -105,23 +145,22 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPaus
         return match ?? screenShareTracks[0];
     }, [screenShareTracks, focusedKey]);
 
+    const handleSelectFocus = (key: string) => {
+        setScreenShareViewState((prev) => {
+            const nextPaused = new Set(prev.pausedKeys);
+            if (prev.focusedKey && prev.focusedKey !== key) {
+                nextPaused.add(prev.focusedKey);
+            }
+            nextPaused.delete(key);
+            return { ...prev, focusedKey: key, pausedKeys: nextPaused };
+        });
+    };
+
     const toggleWatching = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!focusedTrack || !isTrackReference(focusedTrack)) return;
         const key = `${focusedTrack.participant.identity}-${focusedTrack.source}`;
         const isPaused = pausedKeys.has(key);
-        const nextSubscribed = isPaused;
-
-        const videoPublication = focusedTrack.publication;
-        if (videoPublication instanceof RemoteTrackPublication) {
-            videoPublication.setSubscribed(nextSubscribed);
-        }
-
-        focusedTrack.participant.audioTrackPublications.forEach((pub) => {
-            if (pub.source === Track.Source.ScreenShareAudio && pub instanceof RemoteTrackPublication) {
-                pub.setSubscribed(nextSubscribed);
-            }
-        });
 
         setPausedKeys((prev) => {
             const next = new Set(prev);
@@ -232,15 +271,28 @@ export function CustomVideoGrid({ theaterMode, onTheaterModeChange, skipAutoPaus
                             .map(t => {
                                 const isScreenShare = t.source === Track.Source.ScreenShare;
                                 const key = `${t.participant.identity}-${t.source}`;
+                                const thumbnail = isScreenShare ? screenShareThumbnails.get(t.participant.identity) : undefined;
+                                const isPausedShare = isScreenShare && pausedKeys.has(key);
+
                                 return (
                                     <div
                                         key={key}
-                                        onClick={() => isScreenShare && setFocusedKey(key)}
-                                        className={`w-48 lg:w-full h-full lg:h-48 shrink-0 bg-[#1E1F23] rounded-lg overflow-hidden border transition-colors ${isScreenShare ? 'border-brand/40 hover:border-brand cursor-pointer' : 'border-white/6'
+                                        onClick={() => isScreenShare && handleSelectFocus(key)}
+                                        className={`relative w-48 lg:w-full h-full lg:h-48 shrink-0 bg-[#1E1F23] rounded-lg overflow-hidden border transition-colors ${isScreenShare ? 'border-brand/40 hover:border-brand cursor-pointer' : 'border-white/6'
                                             }`}
-                                        title={isScreenShare ? 'Clique para destacar esta transmissão' : undefined}
+                                        title={isScreenShare ? 'Clique para assistir esta transmissão' : undefined}
                                     >
-                                        <CustomParticipantTile trackRef={t} />
+                                        {isPausedShare && thumbnail ? (
+                                            <>
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={thumbnail.dataUrl} alt="" className="w-full h-full object-cover opacity-70" />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                    <Eye size={20} className="text-white" />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <CustomParticipantTile trackRef={t} />
+                                        )}
                                     </div>
                                 );
                             })}
