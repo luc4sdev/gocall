@@ -14,7 +14,7 @@ import { ParticipantAudioProvider } from '@/components/call/ParticipantAudioCont
 import { CallPresenceSounds } from '@/components/call/CallPresenceSounds';
 import { LobbyPresence } from '@/components/call/LobbyPresence';
 import { VoiceRoomBridge, type VoiceControlState } from '@/components/call/VoiceRoomBridge';
-import { LobbyReconnectBridge } from '@/components/layout/LobbyReconnectBridge';
+import { RoomReconnectBridge } from '@/components/layout/RoomReconnectBridge';
 import { ScreenShareThumbnailBridge, type ScreenShareThumbnail } from '@/components/layout/ScreenShareThumbnailBridge';
 import { AppContext, type AppContextValue, type ScreenShareViewState } from '@/components/AppContext';
 import { cn } from '@/lib/utils';
@@ -63,6 +63,10 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
     const [screenShareViewState, setScreenShareViewState] = useState<ScreenShareViewState>(EMPTY_SCREEN_SHARE_VIEW_STATE);
     const [skipAutoPauseOnJoin, setSkipAutoPauseOnJoin] = useState(false);
     const voiceTokenCacheRef = useRef<Map<string, string>>(new Map());
+    const voiceChannelRef = useRef<ChannelDTO | null>(null);
+    useEffect(() => {
+        voiceChannelRef.current = voiceChannel;
+    }, [voiceChannel]);
 
     const [voiceRoomSlot, setVoiceRoomSlot] = useState<{ channelId: string; el: HTMLDivElement } | null>(null);
     const [voiceRoomFallback, setVoiceRoomFallback] = useState<HTMLDivElement | null>(null);
@@ -107,7 +111,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         }
     }, []);
 
-    const handleLobbyDisconnected = useCallback(() => {
+    const refreshLobbyConnection = useCallback(() => {
         const lobbyRoomName = `lobby-${homeServerId}`;
         fetch(`/api/livekit?room=${encodeURIComponent(lobbyRoomName)}`)
             .then((res) => res.json())
@@ -116,6 +120,39 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
             })
             .catch((err) => console.error('Falha ao reconectar ao lobby:', err));
     }, [homeServerId]);
+
+    const handleVoiceDisconnected = useCallback(() => {
+        const channel = voiceChannelRef.current;
+        if (!channel?.roomName) return;
+        fetch(`/api/livekit?room=${encodeURIComponent(channel.roomName)}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.token && voiceChannelRef.current?.id === channel.id) {
+                    voiceTokenCacheRef.current.set(channel.id, data.token);
+                    setVoiceToken(data.token);
+                }
+            })
+            .catch((err) => console.error('Falha ao reconectar à chamada de voz:', err));
+    }, []);
+
+    useEffect(() => {
+        let hiddenAt: number | null = null;
+        const HIDDEN_THRESHOLD_MS = 60_000;
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                hiddenAt = Date.now();
+                return;
+            }
+            if (hiddenAt !== null && Date.now() - hiddenAt > HIDDEN_THRESHOLD_MS) {
+                refreshLobbyConnection();
+            }
+            hiddenAt = null;
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [refreshLobbyConnection]);
 
     const handleReceiveThumbnail = useCallback((thumbnail: ScreenShareThumbnail) => {
         setScreenShareThumbnails((prev) => new Map(prev).set(thumbnail.identity, thumbnail));
@@ -261,7 +298,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
             >
                 <ParticipantsSpy onChange={setParticipants} />
                 <LobbyIdentityReporter onIdentity={setLocalIdentity} />
-                <LobbyReconnectBridge onDisconnected={handleLobbyDisconnected} />
+                <RoomReconnectBridge onDisconnected={refreshLobbyConnection} />
                 <LobbyPresence
                     voiceChannelId={voiceChannel?.id ?? null}
                     isSpeaking={voiceState?.isSpeaking ?? false}
@@ -355,6 +392,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
                             className="contents"
                         >
                             <ParticipantAudioProvider>
+                                <RoomReconnectBridge onDisconnected={handleVoiceDisconnected} />
                                 <VoiceRoomBridge onStateChange={setVoiceState} onThumbnail={setLocalThumbnail} />
                                 <RoomAudioRenderer />
                                 <CallPresenceSounds />

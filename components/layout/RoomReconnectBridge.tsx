@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { DisconnectReason, RoomEvent } from 'livekit-client';
 import { useRoomContext } from '@livekit/components-react';
 
-export function LobbyReconnectBridge({ onDisconnected }: { onDisconnected: () => void }) {
+export function RoomReconnectBridge({ onDisconnected }: { onDisconnected: () => void }) {
     const room = useRoomContext();
     const attemptsRef = useRef(0);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
