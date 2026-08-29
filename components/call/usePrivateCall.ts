@@ -19,6 +19,7 @@ export interface PrivateCallState {
 
 const RING_TIMEOUT_MS = 30_000;
 const INCOMING_RING_INTERVAL_MS = 2_500;
+const OUTGOING_RING_INTERVAL_MS = 3_000;
 
 const PRIVATE_CALL_CHANNEL_PREFIX = 'dm-call:';
 
@@ -26,10 +27,6 @@ export function privateCallChannelId(callId: string) {
     return `${PRIVATE_CALL_CHANNEL_PREFIX}${callId}`;
 }
 
-// Diferencia o id sintético de uma chamada privada do id de um Channel de
-// servidor de verdade — usado pra não vazar presença de chamada privada nos
-// componentes que só deveriam saber sobre canais de voz de servidor
-// (badge do servidor, lista de membros, "amigos em chamada").
 export function isPrivateCallChannelId(channelId: string | null | undefined): boolean {
     return !!channelId && channelId.startsWith(PRIVATE_CALL_CHANNEL_PREFIX);
 }
@@ -75,6 +72,15 @@ export function usePrivateCall({ localIdentity, username, voiceChannelRef, frien
     }, []);
     useEffect(() => stopIncomingRing, [stopIncomingRing]);
 
+    const outgoingRingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const stopOutgoingRing = useCallback(() => {
+        if (outgoingRingIntervalRef.current) {
+            clearInterval(outgoingRingIntervalRef.current);
+            outgoingRingIntervalRef.current = null;
+        }
+    }, []);
+    useEffect(() => stopOutgoingRing, [stopOutgoingRing]);
+
     const replacedPrivateCallRef = useRef<{ callId: string; peerId: string } | null>(null);
 
     const startPrivateCall = useCallback((friend: { id: string; username: string }) => {
@@ -89,22 +95,28 @@ export function usePrivateCall({ localIdentity, username, voiceChannelRef, frien
 
         sendSignalRef.current?.({ signal: 'invite', callId, fromId: localIdentity, fromName: username, toId: friend.id, roomName });
 
+        stopOutgoingRing();
+        playSound('call-ringback');
+        outgoingRingIntervalRef.current = setInterval(() => playSound('call-ringback'), OUTGOING_RING_INTERVAL_MS);
+
         clearRingTimeout();
         ringTimeoutRef.current = setTimeout(() => {
             const current = privateCallRef.current;
             if (current?.callId === callId && current.status === 'outgoing') {
+                stopOutgoingRing();
                 sendSignalRef.current?.({ signal: 'timeout', callId, fromId: localIdentity, fromName: username, toId: friend.id });
                 setPrivateCall(null);
                 notify.info(`${friend.username} não atendeu.`);
             }
         }, RING_TIMEOUT_MS);
-    }, [voiceChannelRef, localIdentity, username, clearRingTimeout]);
+    }, [voiceChannelRef, localIdentity, username, clearRingTimeout, stopOutgoingRing]);
 
     const declinePrivateCall = useCallback(() => {
         const current = privateCallRef.current;
         if (!current) return;
         clearRingTimeout();
         stopIncomingRing();
+        stopOutgoingRing();
         replacedPrivateCallRef.current = null;
         sendSignalRef.current?.({
             signal: current.status === 'incoming' ? 'decline' : 'cancel',
@@ -114,7 +126,7 @@ export function usePrivateCall({ localIdentity, username, voiceChannelRef, frien
             toId: current.peerId,
         });
         setPrivateCall(null);
-    }, [localIdentity, username, clearRingTimeout, stopIncomingRing]);
+    }, [localIdentity, username, clearRingTimeout, stopIncomingRing, stopOutgoingRing]);
 
     const acceptPrivateCall = useCallback(async () => {
         const current = privateCallRef.current;
@@ -195,6 +207,7 @@ export function usePrivateCall({ localIdentity, username, voiceChannelRef, frien
             case 'accept': {
                 if (current?.callId !== payload.callId || current.status !== 'outgoing') return;
                 clearRingTimeout();
+                stopOutgoingRing();
                 (async () => {
                     const joined = await onJoinVoice({
                         id: privateCallChannelId(current.callId),
@@ -223,6 +236,7 @@ export function usePrivateCall({ localIdentity, username, voiceChannelRef, frien
             case 'decline': {
                 if (current?.callId !== payload.callId) return;
                 clearRingTimeout();
+                stopOutgoingRing();
                 setPrivateCall(null);
                 notify.info(`${current.peerName} recusou a chamada.`);
                 break;
@@ -230,6 +244,7 @@ export function usePrivateCall({ localIdentity, username, voiceChannelRef, frien
             case 'busy': {
                 if (current?.callId !== payload.callId) return;
                 clearRingTimeout();
+                stopOutgoingRing();
                 setPrivateCall(null);
                 notify.info(`${current.peerName} está ocupado(a).`);
                 break;
@@ -256,7 +271,7 @@ export function usePrivateCall({ localIdentity, username, voiceChannelRef, frien
                 break;
             }
         }
-    }, [localIdentity, username, friendIdsRef, onJoinVoice, onLeaveVoice, router, clearRingTimeout, stopIncomingRing]);
+    }, [localIdentity, username, friendIdsRef, onJoinVoice, onLeaveVoice, router, clearRingTimeout, stopIncomingRing, stopOutgoingRing]);
 
     return {
         privateCall,

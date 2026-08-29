@@ -233,7 +233,7 @@ export async function applyMicProcessingToMicrophone(localParticipant: LocalPart
     }
 }
 
-type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop' | 'message' | 'call-ring';
+type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop' | 'message' | 'call-ring' | 'call-ringback';
 
 function playTone(
     ctx: AudioContext,
@@ -341,6 +341,10 @@ export function playSound(type: SoundType) {
                 playTone(ctx, 620, now, 0.4, { type: 'sine', peakGain: 0.2 });
                 playTone(ctx, 480, now + 0.5, 0.4, { type: 'sine', peakGain: 0.26 });
                 playTone(ctx, 620, now + 0.5, 0.4, { type: 'sine', peakGain: 0.2 });
+                break;
+            case 'call-ringback':
+                playTone(ctx, 440, now, 1.0, { type: 'sine', peakGain: 0.16 });
+                playTone(ctx, 480, now, 1.0, { type: 'sine', peakGain: 0.12 });
                 break;
         }
 
