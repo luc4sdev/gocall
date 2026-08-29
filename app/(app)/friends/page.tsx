@@ -1,5 +1,5 @@
-import { FriendsShell } from '@/components/friends/FriendsShell';
+import { FriendsView } from '@/components/friends/FriendsView';
 
 export default function FriendsPage() {
-    return <FriendsShell />;
+    return <FriendsView />;
 }

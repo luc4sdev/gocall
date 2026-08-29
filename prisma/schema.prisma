@@ -23,28 +23,32 @@ enum FriendshipStatus {
 }
 
 model User {
-  id                      String       @id @default(cuid())
-  username                String       @unique
-  password                String
-  createdAt               DateTime     @default(now())
-  updatedAt               DateTime     @updatedAt
-  messages                Message[]
-  createdChannels         Channel[]    @relation("ChannelCreator")
-  sentFriendRequests      Friendship[] @relation("FriendRequester")
-  receivedFriendRequests  Friendship[] @relation("FriendAddressee")
+  id                     String          @id @default(cuid())
+  username               String          @unique
+  password               String
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  messages               Message[]
+  createdChannels        Channel[]       @relation("ChannelCreator")
+  sentFriendRequests     Friendship[]    @relation("FriendRequester")
+  receivedFriendRequests Friendship[]    @relation("FriendAddressee")
+  sentDirectMessages     DirectMessage[] @relation("DirectMessageSender")
+  receivedDirectMessages DirectMessage[] @relation("DirectMessageRecipient")
 
   @@map("users")
 }
 
 model Friendship {
-  id          String           @id @default(cuid())
-  requester   User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  requesterId String
-  addressee   User             @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
-  addresseeId String
-  status      FriendshipStatus @default(PENDING)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id                  String           @id @default(cuid())
+  requester           User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId         String
+  addressee           User             @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  addresseeId         String
+  status              FriendshipStatus @default(PENDING)
+  requesterLastReadAt DateTime?
+  addresseeLastReadAt DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   @@unique([requesterId, addresseeId])
   @@index([addresseeId, status])
@@ -91,4 +95,18 @@ model Message {
 
   @@index([channelId, createdAt])
   @@map("messages")
+}
+
+model DirectMessage {
+  id          String   @id @default(cuid())
+  content     String
+  createdAt   DateTime @default(now())
+  sender      User     @relation("DirectMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId    String
+  recipient   User     @relation("DirectMessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipientId String
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, senderId, createdAt])
+  @@map("direct_messages")
 }

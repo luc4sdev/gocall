@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LogOut, Loader2, Mic, Palette, UserRound } from 'lucide-react';
+import { Bell, LogOut, Loader2, Mic, Palette, UserRound } from 'lucide-react';
 
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validation/auth';
 import { notify } from '@/lib/toast';
@@ -15,6 +15,8 @@ import {
     getAdvancedNoiseSuppressionPreference,
     getAudioInputDevicePreference,
     getAudioOutputDevicePreference,
+    getDmNotificationSoundPreference,
+    getDmToastPreference,
     getMicGainPreference,
     getNoiseSuppressionPreference,
     normalizeHexColor,
@@ -22,6 +24,8 @@ import {
     setAdvancedNoiseSuppressionPreference,
     setAudioInputDevicePreference,
     setAudioOutputDevicePreference,
+    setDmNotificationSoundPreference,
+    setDmToastPreference,
     setMicGainPreference,
     setNoiseSuppressionPreference,
 } from '@/lib/utils';
@@ -46,6 +50,7 @@ interface SettingsModalProps {
 const TABS = [
     { id: 'audio', label: 'Áudio', icon: Mic },
     { id: 'appearance', label: 'Aparência', icon: Palette },
+    { id: 'notifications', label: 'Notificações', icon: Bell },
     { id: 'account', label: 'Conta', icon: UserRound },
 ] as const;
 
@@ -65,6 +70,20 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
     const [accentColor, setAccentColor] = useState(getAccentColorPreference);
     const [accentHexInput, setAccentHexInput] = useState(getAccentColorPreference);
     const [accentError, setAccentError] = useState(false);
+    const [dmNotificationSound, setDmNotificationSound] = useState(getDmNotificationSoundPreference);
+    const [dmToast, setDmToast] = useState(getDmToastPreference);
+
+    const handleToggleDmNotificationSound = () => {
+        const next = !dmNotificationSound;
+        setDmNotificationSound(next);
+        setDmNotificationSoundPreference(next);
+    };
+
+    const handleToggleDmToast = () => {
+        const next = !dmToast;
+        setDmToast(next);
+        setDmToastPreference(next);
+    };
 
     const handleToggleNoiseSuppression = () => {
         const next = !noiseSuppression;
@@ -377,6 +396,54 @@ export function SettingsModal({ open, onOpenChange, username }: SettingsModalPro
                                     <p className="text-xs text-destructive">Use um hex válido, tipo #FF6B4A.</p>
                                 )}
                             </div>
+                        )}
+
+                        {activeTab === 'notifications' && (
+                            <>
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-white/2 px-3 py-2.5">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium">Som de mensagem direta</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Toca um som quando chega uma mensagem direta de uma conversa que não está aberta.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={dmNotificationSound}
+                                        onClick={handleToggleDmNotificationSound}
+                                        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 cursor-pointer ${dmNotificationSound ? 'bg-brand' : 'bg-white/15'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${dmNotificationSound ? 'translate-x-4' : 'translate-x-0'
+                                                }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-white/2 px-3 py-2.5">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium">Toast de mensagem direta</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Mostra um aviso na tela com uma prévia quando chega uma mensagem direta de uma conversa que não está aberta.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={dmToast}
+                                        onClick={handleToggleDmToast}
+                                        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 cursor-pointer ${dmToast ? 'bg-brand' : 'bg-white/15'
+                                            }`}
+                                    >
+                                        <span
+                                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${dmToast ? 'translate-x-4' : 'translate-x-0'
+                                                }`}
+                                        />
+                                    </button>
+                                </div>
+                            </>
                         )}
 
                         {activeTab === 'account' && (

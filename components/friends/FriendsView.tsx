@@ -1,21 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Check, Loader2, Search, UserMinus, UserPlus, X } from 'lucide-react';
 import { useAppContext } from '@/components/AppContext';
 import { Logo } from '@/components/Logo';
 import { notify } from '@/lib/toast';
-import type { FriendDTO, FriendRequestDTO, UserSearchResultDTO } from '@/lib/types';
+import { useFriendsContext } from './FriendsContext';
+import type { FriendDTO, UserSearchResultDTO } from '@/lib/types';
 
-interface FriendsViewProps {
-    friends: FriendDTO[];
-    incomingRequests: FriendRequestDTO[];
-    outgoingRequests: FriendRequestDTO[];
-    onRefresh: () => Promise<void>;
-}
-
-export function FriendsView({ friends, incomingRequests, outgoingRequests, onRefresh }: FriendsViewProps) {
-    const { activeParticipants } = useAppContext();
+export function FriendsView() {
+    const { activeParticipants, unreadDmFriendIds } = useAppContext();
+    const { friends, incomingRequests, outgoingRequests, refresh } = useFriendsContext();
 
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<UserSearchResultDTO[]>([]);
@@ -60,7 +56,7 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
             }
             setQuery('');
             setResults([]);
-            await onRefresh();
+            await refresh();
         } catch {
             notify.error('Falha na conexão com o servidor.');
         } finally {
@@ -77,7 +73,7 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
                 notify.error(json.error || 'Não foi possível aceitar o pedido.');
                 return;
             }
-            await onRefresh();
+            await refresh();
         } catch {
             notify.error('Falha na conexão com o servidor.');
         } finally {
@@ -94,7 +90,7 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
                 notify.error(json.error || 'Não foi possível concluir a ação.');
                 return;
             }
-            await onRefresh();
+            await refresh();
         } catch {
             notify.error('Falha na conexão com o servidor.');
         } finally {
@@ -104,7 +100,12 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
 
     const incoming = incomingRequests;
     const outgoing = outgoingRequests;
-    const onlineFriends = friends.filter((f) => onlineIds.has(f.id));
+    const sortedFriends = [...friends].sort((a, b) => {
+        const aOnline = onlineIds.has(a.id);
+        const bOnline = onlineIds.has(b.id);
+        if (aOnline !== bOnline) return aOnline ? -1 : 1;
+        return a.username.localeCompare(b.username);
+    });
 
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-[#0F1012]">
@@ -244,21 +245,23 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
                         </div>
                     )}
 
-                    {onlineFriends.length === 0 ? (
+                    {sortedFriends.length === 0 ? (
                         <div className="flex flex-col items-center justify-center text-center py-16">
                             <Logo className="w-20 h-20 mb-4 opacity-80" />
-                            <p className="text-sm text-[#63656B]">Nenhum amigo online por enquanto.</p>
+                            <p className="text-sm text-[#63656B]">Você ainda não tem amigos.</p>
                         </div>
                     ) : (
                         <div>
                             <p className="text-xs font-medium text-[#8B8D93] uppercase tracking-wider mb-2">
-                                Online — {onlineFriends.length}
+                                Amigos — {sortedFriends.length}
                             </p>
                             <div className="flex flex-col gap-1">
-                                {onlineFriends.map((f) => (
+                                {sortedFriends.map((f) => (
                                     <FriendRow
                                         key={f.friendshipId}
                                         friend={f}
+                                        online={onlineIds.has(f.id)}
+                                        hasUnread={unreadDmFriendIds.has(f.id)}
                                         onRemove={() => removeFriendship(f.friendshipId)}
                                         pending={pendingActionId === f.friendshipId}
                                     />
@@ -274,24 +277,33 @@ export function FriendsView({ friends, incomingRequests, outgoingRequests, onRef
 
 function FriendRow({
     friend,
+    online,
+    hasUnread,
     onRemove,
     pending,
 }: {
     friend: FriendDTO;
+    online: boolean;
+    hasUnread: boolean;
     onRemove: () => void;
     pending: boolean;
 }) {
     return (
         <div className="group flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-white/3">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <Link href={`/friends/${friend.id}`} className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className="relative shrink-0">
                     <div className="w-9 h-9 rounded-full bg-[#2A2D35] flex items-center justify-center text-[13px] font-medium">
                         {friend.username[0]?.toUpperCase()}
                     </div>
-                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-[#0F1012] bg-emerald-500" />
+                    {online && (
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-[#0F1012] bg-emerald-500" />
+                    )}
                 </div>
-                <span className="text-sm truncate text-[#EDEBE7]">{friend.username}</span>
-            </div>
+                <span className={`text-sm truncate ${hasUnread ? 'font-semibold text-[#EDEBE7]' : online ? 'text-[#EDEBE7]' : 'text-[#8B8D93]'}`}>
+                    {friend.username}
+                </span>
+                {hasUnread && <span className="w-2 h-2 rounded-full bg-brand shrink-0" />}
+            </Link>
             <button
                 onClick={onRemove}
                 disabled={pending}

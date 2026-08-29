@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Loader2, Phone, Radio } from 'lucide-react';
+import { Eye, Loader2, Radio } from 'lucide-react';
 import type { Participant } from 'livekit-client';
 import { useAppContext } from '@/components/AppContext';
 import { notify } from '@/lib/toast';
@@ -120,20 +120,17 @@ export function FriendsCallSidebar({ friends }: FriendsCallSidebarProps) {
                                         }
 
                                         return (
-                                            <button
+                                            <div
                                                 key={p.identity}
-                                                onClick={() => handleJoin(channelId)}
-                                                disabled={isJoining}
-                                                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-white/3 min-w-0 disabled:opacity-60 cursor-pointer"
+                                                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white/3 min-w-0"
                                             >
                                                 <div className="w-8 h-8 rounded-full bg-[#2A2D35] flex items-center justify-center text-[12px] font-medium shrink-0">
                                                     {isJoining ? <Loader2 size={14} className="animate-spin" /> : name[0]?.toUpperCase()}
                                                 </div>
                                                 <div className='w-full flex items-center justify-between group'>
                                                     <span className="text-[14px] text-[#EDEBE7] truncate">{name}</span>
-                                                    <Phone size={14} className="text-[#63656B] shrink-0 group-hover:text-green-500" />
                                                 </div>
-                                            </button>
+                                            </div>
                                         );
                                     })}
                             </div>

@@ -1,16 +1,15 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocalParticipant } from '@livekit/components-react';
+import { useChat, useLocalParticipant } from '@livekit/components-react';
 import { Send, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import type { MessageDTO } from '@/lib/types';
-import type { ChatBridgeState } from './ChatBridge';
+import { useAppContext } from '@/components/AppContext';
+import { buildDmKey } from '@/lib/utils';
+import type { DirectMessageDTO, FriendDTO } from '@/lib/types';
 
-interface ChatChannelProps {
-    channelId: string;
-    chatMessages: ChatBridgeState['chatMessages'];
-    sendMessage: ChatBridgeState['send'] | null;
+interface DirectMessageViewProps {
+    friend: Pick<FriendDTO, 'id' | 'username'>;
 }
 
 interface DisplayMessage {
@@ -21,24 +20,29 @@ interface DisplayMessage {
     timestamp: number;
 }
 
-export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChannelProps) {
+export function DirectMessageView({ friend }: DirectMessageViewProps) {
     const { localParticipant } = useLocalParticipant();
+    const { chatMessages, send } = useChat();
+    const { markDmRead } = useAppContext();
     const [message, setMessage] = useState('');
-    const [history, setHistory] = useState<MessageDTO[]>([]);
+    const [history, setHistory] = useState<DirectMessageDTO[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const inputRef = useRef<HTMLInputElement | null>(null);
+
+    const dmKey = buildDmKey(localParticipant.identity, friend.id);
 
     useEffect(() => {
         let cancelled = false;
 
         const loadHistory = async () => {
+            setIsLoadingHistory(true);
             try {
-                const res = await fetch(`/api/channels/${channelId}/messages`);
+                const res = await fetch(`/api/dm/${friend.id}/messages`);
                 const data = await res.json();
                 if (!cancelled && res.ok) setHistory(data.messages);
             } catch (err) {
-                console.error('Erro ao carregar histórico do chat:', err);
+                console.error('Erro ao carregar histórico da conversa:', err);
             } finally {
                 if (!cancelled) setIsLoadingHistory(false);
             }
@@ -48,7 +52,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
         return () => {
             cancelled = true;
         };
-    }, [channelId]);
+    }, [friend.id]);
 
     const messages: DisplayMessage[] = useMemo(() => {
         const fromHistory: DisplayMessage[] = history.map((m) => ({
@@ -60,7 +64,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
         }));
 
         const fromLive: DisplayMessage[] = chatMessages
-            .filter((m) => m.attributes?.channelId === channelId)
+            .filter((m) => m.attributes?.dmKey === dmKey)
             .map((m) => ({
                 key: m.id,
                 authorId: m.from?.identity ?? 'unknown',
@@ -75,17 +79,21 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
             ));
 
         return [...fromHistory, ...fromLive];
-    }, [history, chatMessages, channelId]);
+    }, [history, chatMessages, dmKey]);
+
+    useEffect(() => {
+        markDmRead(friend.id);
+    }, [friend.id, messages.length, markDmRead]);
 
     const handleSend = async (e: FormEvent) => {
         e.preventDefault();
         const content = message.trim();
-        if (!content || !sendMessage) return;
+        if (!content || !send) return;
         setMessage('');
 
         setIsSending(true);
         try {
-            await sendMessage(content, { attributes: { channelId } });
+            await send(content, { attributes: { dmKey, recipientId: friend.id } });
         } catch (err) {
             console.error('Erro ao enviar mensagem via LiveKit:', err);
         } finally {
@@ -94,7 +102,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
         }
 
         try {
-            const res = await fetch(`/api/channels/${channelId}/messages`, {
+            const res = await fetch(`/api/dm/${friend.id}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content }),
@@ -119,10 +127,10 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
                 ) : messages.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 text-center">
                         <div className="w-16 h-16 bg-[#4E5058] rounded-full flex items-center justify-center mb-4">
-                            <span className="text-white text-3xl">#</span>
+                            <span className="text-white text-2xl font-semibold">{friend.username[0]?.toUpperCase()}</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white">Bem-vindo</h2>
-                        <p>Este é o começo do canal de texto.</p>
+                        <h2 className="text-2xl font-bold text-white">{friend.username}</h2>
+                        <p>Este é o começo da sua conversa com {friend.username}.</p>
                     </div>
                 ) : (
                     // mt-auto (em vez de justify-end no container com overflow-y-auto) mantém as
@@ -166,7 +174,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Conversar"
+                    placeholder={`Conversar com ${friend.username}`}
                     className="h-6 flex-1 border-none bg-transparent px-0 py-0 leading-6 text-[15px] text-[#EDEBE7] shadow-none placeholder:text-[#63656B] focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
                 />
                 <button

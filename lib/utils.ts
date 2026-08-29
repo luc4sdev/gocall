@@ -13,6 +13,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+
+export function buildDmKey(userIdA: string, userIdB: string): string {
+  return [userIdA, userIdB].sort().join(':')
+}
+
 const NOISE_SUPPRESSION_KEY = 'gocall:noiseSuppression';
 
 export function getNoiseSuppressionPreference(): boolean {
@@ -92,6 +97,32 @@ export function setMicGainPreference(value: number) {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(MIC_GAIN_KEY, String(value));
     window.dispatchEvent(new Event(MIC_GAIN_CHANGE_EVENT));
+}
+
+const DM_NOTIFICATION_SOUND_KEY = 'gocall:dmNotificationSound';
+
+export function getDmNotificationSoundPreference(): boolean {
+    if (typeof window === 'undefined') return true;
+    const stored = window.localStorage.getItem(DM_NOTIFICATION_SOUND_KEY);
+    return stored === null ? true : stored === 'true';
+}
+
+export function setDmNotificationSoundPreference(value: boolean) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(DM_NOTIFICATION_SOUND_KEY, String(value));
+}
+
+const DM_TOAST_KEY = 'gocall:dmToast';
+
+export function getDmToastPreference(): boolean {
+    if (typeof window === 'undefined') return true;
+    const stored = window.localStorage.getItem(DM_TOAST_KEY);
+    return stored === null ? true : stored === 'true';
+}
+
+export function setDmToastPreference(value: boolean) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(DM_TOAST_KEY, String(value));
 }
 
 const ACCENT_COLOR_KEY = 'gocall:accentColor';
@@ -202,7 +233,7 @@ export async function applyMicProcessingToMicrophone(localParticipant: LocalPart
     }
 }
 
-type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop';
+type SoundType = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'screenshare-start' | 'screenshare-stop' | 'message' | 'call-ring';
 
 function playTone(
     ctx: AudioContext,
@@ -301,9 +332,19 @@ export function playSound(type: SoundType) {
                 playTone(ctx, 659.25, now, 0.06, { type: 'triangle', peakGain: 0.24 });
                 playTone(ctx, 440, now + 0.06, 0.22, { type: 'triangle', peakGain: 0.26 });
                 break;
+            case 'message':
+                playTone(ctx, 587.33, now, 0.07, { type: 'sine', peakGain: 0.22 });
+                playTone(ctx, 880, now + 0.07, 0.13, { type: 'sine', peakGain: 0.22 });
+                break;
+            case 'call-ring':
+                playTone(ctx, 480, now, 0.4, { type: 'sine', peakGain: 0.26 });
+                playTone(ctx, 620, now, 0.4, { type: 'sine', peakGain: 0.2 });
+                playTone(ctx, 480, now + 0.5, 0.4, { type: 'sine', peakGain: 0.26 });
+                playTone(ctx, 620, now + 0.5, 0.4, { type: 'sine', peakGain: 0.2 });
+                break;
         }
 
-        setTimeout(() => ctx.close().catch(() => {}), 700);
+        setTimeout(() => ctx.close().catch(() => {}), 1300);
     } catch {
         console.error("Áudio bloqueado pelo navegador");
     }

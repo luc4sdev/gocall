@@ -38,7 +38,7 @@ export async function GET() {
             const other = isRequester ? f.addressee : f.requester;
 
             if (f.status === 'ACCEPTED') {
-                friends.push({ friendshipId: f.id, id: other.id, username: other.username });
+                friends.push({ friendshipId: f.id, id: other.id, username: other.username, hasUnread: false });
             } else if (isRequester) {
                 outgoingRequests.push({
                     friendshipId: f.id,
@@ -53,6 +53,32 @@ export async function GET() {
                     username: other.username,
                     createdAt: f.createdAt.toISOString(),
                 });
+            }
+        }
+
+        if (friends.length > 0) {
+            const latestBySender = await prisma.directMessage.groupBy({
+                by: ['senderId'],
+                where: { recipientId: session.sub, senderId: { in: friends.map((f) => f.id) } },
+                _max: { createdAt: true },
+            });
+            const latestIncomingByFriendId = new Map(latestBySender.map((r) => [r.senderId, r._max.createdAt]));
+
+            const myLastReadAtByFriendId = new Map(
+                friendships
+                    .filter((f) => f.status === 'ACCEPTED')
+                    .map((f) => {
+                        const isRequester = f.requesterId === session.sub;
+                        const otherId = isRequester ? f.addresseeId : f.requesterId;
+                        const myLastReadAt = isRequester ? f.requesterLastReadAt : f.addresseeLastReadAt;
+                        return [otherId, myLastReadAt] as const;
+                    })
+            );
+
+            for (const friend of friends) {
+                const latestIncoming = latestIncomingByFriendId.get(friend.id);
+                const myLastReadAt = myLastReadAtByFriendId.get(friend.id) ?? null;
+                friend.hasUnread = !!latestIncoming && (!myLastReadAt || latestIncoming > myLastReadAt);
             }
         }
 

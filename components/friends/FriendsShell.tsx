@@ -1,15 +1,25 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAppContext } from '@/components/AppContext';
+import { FriendsContext } from './FriendsContext';
 import { FriendsSidebar } from './FriendsSidebar';
-import { FriendsView } from './FriendsView';
 import { FriendsCallSidebar } from './FriendsCallSidebar';
 import { useFriendsData } from './useFriendsData';
 
-export function FriendsShell() {
-    const { activeParticipants } = useAppContext();
+export function FriendsShell({ children }: { children: React.ReactNode }) {
+    const { activeParticipants, seedUnreadDmFriendIds, setFriendIds } = useAppContext();
     const { data, loading, loadError, refresh } = useFriendsData();
+
+    useEffect(() => {
+        const unreadIds = (data?.friends ?? []).filter((f) => f.hasUnread).map((f) => f.id);
+        if (unreadIds.length > 0) seedUnreadDmFriendIds(unreadIds);
+    }, [data, seedUnreadDmFriendIds]);
+
+    useEffect(() => {
+        if (data) setFriendIds(data.friends.map((f) => f.id));
+    }, [data, setFriendIds]);
 
     if (loading) {
         return (
@@ -31,15 +41,19 @@ export function FriendsShell() {
     const onlineIds = new Set(activeParticipants.map((p) => p.identity));
 
     return (
-        <>
+        <FriendsContext.Provider
+            value={{
+                friends,
+                incomingRequests: data?.incomingRequests ?? [],
+                outgoingRequests: data?.outgoingRequests ?? [],
+                refresh,
+            }}
+        >
             <FriendsSidebar friends={friends} onlineIds={onlineIds} />
-            <FriendsView
-                friends={friends}
-                incomingRequests={data?.incomingRequests ?? []}
-                outgoingRequests={data?.outgoingRequests ?? []}
-                onRefresh={refresh}
-            />
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#0F1012]">
+                {children}
+            </div>
             <FriendsCallSidebar friends={friends} />
-        </>
+        </FriendsContext.Provider>
     );
 }

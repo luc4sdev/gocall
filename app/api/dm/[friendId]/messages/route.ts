@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { getAcceptedFriendship } from '@/lib/friendship';
 import { createMessageSchema } from '@/lib/validation/message';
-import type { MessageDTO } from '@/lib/types';
+import type { DirectMessageDTO } from '@/lib/types';
 
 const HISTORY_LIMIT = 100;
 
@@ -15,7 +16,7 @@ async function requireSession() {
 
 export async function GET(
     _request: Request,
-    { params }: { params: Promise<{ channelId: string }> }
+    { params }: { params: Promise<{ friendId: string }> }
 ) {
     try {
         const session = await requireSession();
@@ -23,39 +24,47 @@ export async function GET(
             return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
         }
 
-        const { channelId } = await params;
-
-        const channel = await prisma.channel.findUnique({ where: { id: channelId } });
-        if (!channel || channel.type !== 'TEXT') {
-            return NextResponse.json({ error: 'Canal de texto não encontrado.' }, { status: 404 });
+        const { friendId } = await params;
+        if (friendId === session.sub) {
+            return NextResponse.json({ error: 'Conversa inválida.' }, { status: 400 });
         }
 
-        const messages = await prisma.message.findMany({
-            where: { channelId },
+        const friendship = await getAcceptedFriendship(session.sub, friendId);
+        if (!friendship) {
+            return NextResponse.json({ error: 'Vocês não são amigos.' }, { status: 403 });
+        }
+
+        const messages = await prisma.directMessage.findMany({
+            where: {
+                OR: [
+                    { senderId: session.sub, recipientId: friendId },
+                    { senderId: friendId, recipientId: session.sub },
+                ],
+            },
             orderBy: { createdAt: 'desc' },
             take: HISTORY_LIMIT,
-            include: { author: { select: { username: true } } },
+            include: { sender: { select: { username: true } } },
         });
         messages.reverse();
 
-        const dto: MessageDTO[] = messages.map((m) => ({
+        const dto: DirectMessageDTO[] = messages.map((m) => ({
             id: m.id,
             content: m.content,
             createdAt: m.createdAt.toISOString(),
-            authorId: m.authorId,
-            authorName: m.author.username,
+            authorId: m.senderId,
+            authorName: m.sender.username,
         }));
 
         return NextResponse.json({ messages: dto });
     } catch (error) {
-        console.error('Erro ao buscar mensagens:', error);
+        console.error('Erro ao buscar mensagens diretas:', error);
         return NextResponse.json({ error: 'Erro interno ao buscar mensagens.' }, { status: 500 });
     }
 }
 
 export async function POST(
     request: Request,
-    { params }: { params: Promise<{ channelId: string }> }
+    { params }: { params: Promise<{ friendId: string }> }
 ) {
     try {
         const session = await requireSession();
@@ -63,11 +72,14 @@ export async function POST(
             return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
         }
 
-        const { channelId } = await params;
+        const { friendId } = await params;
+        if (friendId === session.sub) {
+            return NextResponse.json({ error: 'Conversa inválida.' }, { status: 400 });
+        }
 
-        const channel = await prisma.channel.findUnique({ where: { id: channelId } });
-        if (!channel || channel.type !== 'TEXT') {
-            return NextResponse.json({ error: 'Canal de texto não encontrado.' }, { status: 404 });
+        const friendship = await getAcceptedFriendship(session.sub, friendId);
+        if (!friendship) {
+            return NextResponse.json({ error: 'Vocês não são amigos.' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -79,26 +91,26 @@ export async function POST(
             );
         }
 
-        const message = await prisma.message.create({
+        const message = await prisma.directMessage.create({
             data: {
                 content: parsed.data.content,
-                channelId,
-                authorId: session.sub,
+                senderId: session.sub,
+                recipientId: friendId,
             },
-            include: { author: { select: { username: true } } },
+            include: { sender: { select: { username: true } } },
         });
 
-        const dto: MessageDTO = {
+        const dto: DirectMessageDTO = {
             id: message.id,
             content: message.content,
             createdAt: message.createdAt.toISOString(),
-            authorId: message.authorId,
-            authorName: message.author.username,
+            authorId: message.senderId,
+            authorName: message.sender.username,
         };
 
         return NextResponse.json({ message: dto });
     } catch (error) {
-        console.error('Erro ao enviar mensagem:', error);
+        console.error('Erro ao enviar mensagem direta:', error);
         return NextResponse.json({ error: 'Erro interno ao enviar mensagem.' }, { status: 500 });
     }
 }

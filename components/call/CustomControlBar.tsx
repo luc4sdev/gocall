@@ -96,7 +96,6 @@ export function CustomControlBar({ onLeave }: { onLeave: () => void }) {
         await localParticipant.setMicrophoneEnabled(false);
         await localParticipant.setCameraEnabled(false);
         await localParticipant.setScreenShareEnabled(false);
-        playSound('leave');
         onLeave();
     };
     return (

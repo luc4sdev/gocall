@@ -16,11 +16,16 @@ import { LobbyPresence } from '@/components/call/LobbyPresence';
 import { VoiceRoomBridge, type VoiceControlState } from '@/components/call/VoiceRoomBridge';
 import { RoomReconnectBridge } from '@/components/layout/RoomReconnectBridge';
 import { ScreenShareThumbnailBridge, type ScreenShareThumbnail } from '@/components/layout/ScreenShareThumbnailBridge';
+import { DirectMessageWatcher } from '@/components/friends/DirectMessageWatcher';
+import { CallSignalBridge } from '@/components/call/CallSignalBridge';
+import { PrivateCallOverlay } from '@/components/call/PrivateCallOverlay';
+import { isPrivateCallChannelId, usePrivateCall } from '@/components/call/usePrivateCall';
 import { AppContext, type AppContextValue, type ScreenShareViewState } from '@/components/AppContext';
-import { cn } from '@/lib/utils';
+import { cn, playSound } from '@/lib/utils';
 import type { ChannelDTO } from '@/lib/types';
 
 const ROOM_OPTIONS: RoomOptions = { dynacast: true };
+const LOBBY_ROOM_NAME = 'gocall-global-lobby';
 
 const EMPTY_SCREEN_SHARE_VIEW_STATE: ScreenShareViewState = {
     pausedKeys: new Set(),
@@ -68,6 +73,59 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         voiceChannelRef.current = voiceChannel;
     }, [voiceChannel]);
 
+    const [unreadDmFriendIds, setUnreadDmFriendIds] = useState<Set<string>>(new Set());
+
+    const seedUnreadDmFriendIds = useCallback((friendIds: string[]) => {
+        if (friendIds.length === 0) return;
+        setUnreadDmFriendIds((prev) => {
+            let changed = false;
+            const next = new Set(prev);
+            for (const id of friendIds) {
+                if (!next.has(id)) {
+                    next.add(id);
+                    changed = true;
+                }
+            }
+            return changed ? next : prev;
+        });
+    }, []);
+
+    const markDmRead = useCallback((friendId: string) => {
+        setUnreadDmFriendIds((prev) => {
+            if (!prev.has(friendId)) return prev;
+            const next = new Set(prev);
+            next.delete(friendId);
+            return next;
+        });
+        fetch(`/api/dm/${encodeURIComponent(friendId)}/read`, { method: 'POST' })
+            .catch((err) => console.error('Falha ao marcar conversa como lida:', err));
+    }, []);
+
+    const [friendIds, setFriendIdsState] = useState<Set<string>>(new Set());
+    const friendIdsRef = useRef<Set<string>>(friendIds);
+    useEffect(() => {
+        friendIdsRef.current = friendIds;
+    }, [friendIds]);
+
+    const setFriendIds = useCallback((ids: string[]) => {
+        setFriendIdsState(new Set(ids));
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/friends')
+            .then((res) => res.json())
+            .then((data) => {
+                if (cancelled) return;
+                const ids = (data.friends ?? []).map((f: { id: string }) => f.id);
+                setFriendIdsState(new Set(ids));
+            })
+            .catch((err) => console.error('Falha ao carregar lista de amigos:', err));
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const [voiceRoomSlot, setVoiceRoomSlot] = useState<{ channelId: string; el: HTMLDivElement } | null>(null);
     const [voiceRoomFallback, setVoiceRoomFallback] = useState<HTMLDivElement | null>(null);
     const [voiceParticipantsSlot, setVoiceParticipantsSlot] = useState<HTMLDivElement | null>(null);
@@ -75,6 +133,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
     const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || '';
 
     const handleLeaveVoice = useCallback(() => {
+        if (voiceChannelRef.current) playSound('leave');
         setVoiceChannel(null);
         setVoiceToken(null);
         setVoiceState(null);
@@ -82,7 +141,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         setLocalThumbnail(null);
         setSkipAutoPauseOnJoin(false);
         setScreenShareViewState(EMPTY_SCREEN_SHARE_VIEW_STATE);
-    }, []);
+    }, [voiceChannelRef]);
 
     const handleJoinVoice = useCallback(async (channel: ChannelDTO): Promise<boolean> => {
         if (!channel.roomName) return false;
@@ -111,15 +170,31 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         }
     }, []);
 
+    const {
+        privateCall,
+        startPrivateCall,
+        acceptPrivateCall,
+        declinePrivateCall,
+        handleCallSignalReady,
+        handleCallSignal,
+        handleLeaveVoiceUnified,
+    } = usePrivateCall({
+        localIdentity,
+        username,
+        voiceChannelRef,
+        friendIdsRef,
+        onJoinVoice: handleJoinVoice,
+        onLeaveVoice: handleLeaveVoice,
+    });
+
     const refreshLobbyConnection = useCallback(() => {
-        const lobbyRoomName = `lobby-${homeServerId}`;
-        fetch(`/api/livekit?room=${encodeURIComponent(lobbyRoomName)}`)
+        fetch(`/api/livekit?room=${encodeURIComponent(LOBBY_ROOM_NAME)}`)
             .then((res) => res.json())
             .then((data) => {
                 if (data.token) setLobbyToken(data.token);
             })
             .catch((err) => console.error('Falha ao reconectar ao lobby:', err));
-    }, [homeServerId]);
+    }, []);
 
     const handleVoiceDisconnected = useCallback(() => {
         const channel = voiceChannelRef.current;
@@ -193,8 +268,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
 
         const init = async () => {
             try {
-                const lobbyRoomName = `lobby-${homeServerId}`;
-                const res = await fetch(`/api/livekit?room=${encodeURIComponent(lobbyRoomName)}`, {
+                const res = await fetch(`/api/livekit?room=${encodeURIComponent(LOBBY_ROOM_NAME)}`, {
                     signal: controller.signal,
                 });
                 const data = await res.json();
@@ -223,7 +297,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
             controller.abort();
             clearTimeout(timeoutId);
         };
-    }, [homeServerId, connectAttempt]);
+    }, [connectAttempt]);
 
     const handleRetryConnect = useCallback(() => {
         setError('');
@@ -257,6 +331,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
 
     const isConnectedToVoice = !!voiceChannel && !!voiceToken;
     const isFriendsRoute = pathname === '/friends' || pathname.startsWith('/friends/');
+    const openFriendId = pathname.startsWith('/friends/') ? pathname.slice('/friends/'.length).split('/')[0] || null : null;
     const videoPortalTarget = (voiceRoomSlot ? voiceRoomSlot.el : null) ?? voiceRoomFallback;
 
     const missingThumbnailIdentities = participants
@@ -264,6 +339,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         .map((p) => p.identity);
 
     const homeServerInCall = participants.filter((p) => p.attributes?.inCall === 'true');
+    const serverVoiceChannelId = voiceChannel && !isPrivateCallChannelId(voiceChannel.id) ? voiceChannel.id : null;
 
     const contextValue: AppContextValue = {
         username,
@@ -274,7 +350,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         theaterMode,
         onTheaterModeChange: setTheaterMode,
         onJoinVoice: handleJoinVoice,
-        onLeaveVoice: handleLeaveVoice,
+        onLeaveVoice: handleLeaveVoiceUnified,
         localThumbnail,
         screenShareThumbnails,
         screenShareViewState,
@@ -283,6 +359,15 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
         setSkipAutoPauseOnJoin,
         registerVoiceRoomSlot,
         registerVoiceParticipantsSlot: setVoiceParticipantsSlot,
+        unreadDmFriendIds,
+        seedUnreadDmFriendIds,
+        markDmRead,
+        friendIds,
+        setFriendIds,
+        privateCall,
+        startPrivateCall,
+        acceptPrivateCall,
+        declinePrivateCall,
     };
 
     return (
@@ -299,13 +384,20 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
                 <ParticipantsSpy onChange={setParticipants} />
                 <LobbyIdentityReporter onIdentity={setLocalIdentity} />
                 <RoomReconnectBridge onDisconnected={refreshLobbyConnection} />
+                <DirectMessageWatcher
+                    localIdentity={localIdentity}
+                    openFriendId={openFriendId}
+                    friendIdsRef={friendIdsRef}
+                    onUnread={(friendId) => seedUnreadDmFriendIds([friendId])}
+                />
+                <CallSignalBridge onSignal={handleCallSignal} onReady={handleCallSignalReady} />
                 <LobbyPresence
-                    voiceChannelId={voiceChannel?.id ?? null}
+                    voiceChannelId={serverVoiceChannelId}
                     isSpeaking={voiceState?.isSpeaking ?? false}
-                    isScreenSharing={voiceState?.isScreenShareEnabled ?? false}
+                    isScreenSharing={serverVoiceChannelId ? (voiceState?.isScreenShareEnabled ?? false) : false}
                 />
                 <ScreenShareThumbnailBridge
-                    thumbnail={localThumbnail}
+                    thumbnail={serverVoiceChannelId ? localThumbnail : null}
                     onReceive={handleReceiveThumbnail}
                     requestFrom={missingThumbnailIdentities}
                 />
@@ -375,6 +467,15 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
                 </div>
 
                 <AppContext.Provider value={contextValue}>
+                    {privateCall && (
+                        <PrivateCallOverlay
+                            call={privateCall}
+                            willLeaveCurrentCall={privateCall.status === 'incoming' && !!voiceChannel}
+                            onAccept={acceptPrivateCall}
+                            onDecline={declinePrivateCall}
+                        />
+                    )}
+
                     <div className="flex-1 flex min-w-0 min-h-0">
                         {children}
                     </div>
@@ -398,7 +499,7 @@ export function AppShell({ username, homeServerId, homeServerName, children }: A
                                 <CallPresenceSounds />
                                 {videoPortalTarget && createPortal(
                                     <VoiceRoom
-                                        onLeave={handleLeaveVoice}
+                                        onLeave={handleLeaveVoiceUnified}
                                         theaterMode={theaterMode}
                                         onTheaterModeChange={setTheaterMode}
                                         channelName={voiceChannel.name}

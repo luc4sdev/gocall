@@ -15,12 +15,21 @@ export interface MessageDTO {
     authorName: string;
 }
 
+export interface DirectMessageDTO {
+    id: string;
+    content: string;
+    createdAt: string;
+    authorId: string;
+    authorName: string;
+}
+
 export type FriendshipStatus = 'PENDING' | 'ACCEPTED';
 
 export interface FriendDTO {
     friendshipId: string;
     id: string;
     username: string;
+    hasUnread: boolean;
 }
 
 export interface FriendRequestDTO {
