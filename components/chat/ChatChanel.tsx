@@ -28,6 +28,8 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const inputRef = useRef<HTMLInputElement | null>(null);
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+    const isNearBottomRef = useRef(true);
 
     useEffect(() => {
         let cancelled = false;
@@ -49,6 +51,16 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
             cancelled = true;
         };
     }, [channelId]);
+
+    useEffect(() => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const handleScroll = () => {
+            isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        };
+        el.addEventListener('scroll', handleScroll);
+        return () => el.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const messages: DisplayMessage[] = useMemo(() => {
         const fromHistory: DisplayMessage[] = history.map((m) => ({
@@ -76,6 +88,12 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
 
         return [...fromHistory, ...fromLive];
     }, [history, chatMessages, channelId]);
+
+    useEffect(() => {
+        const el = scrollContainerRef.current;
+        if (!el || !isNearBottomRef.current) return;
+        el.scrollTop = el.scrollHeight;
+    }, [messages.length]);
 
     const handleSend = async (e: FormEvent) => {
         e.preventDefault();
@@ -111,7 +129,7 @@ export function ChatChannel({ channelId, chatMessages, sendMessage }: ChatChanne
     return (
         <div className="flex-1 flex flex-col bg-[#0B0C0D] px-2 sm:px-4 pt-2 sm:pt-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] min-h-0">
 
-            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col mb-4 pr-1 sm:pr-2">
+            <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto flex flex-col mb-4 pr-1 sm:pr-2">
                 {isLoadingHistory ? (
                     <div className="flex-1 flex items-center justify-center text-gray-400">
                         <Loader2 size={24} className="animate-spin" />
